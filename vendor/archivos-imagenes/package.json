@@ -1,0 +1,21 @@
+{
+  "name": "@base/archivos-imagenes",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "@base/usuarios-acceso": "0.1.0",
+    "express": "5.2.1",
+    "@aws-sdk/client-s3": "^3.0.0"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  }
+}

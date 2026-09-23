@@ -1,0 +1,11 @@
+import React from 'react';
+export const money=n=>new Intl.NumberFormat('es-PE',{style:'currency',currency:'PEN'}).format(n/100);
+export const date=d=>new Date(d).toLocaleDateString('es-PE',{day:'numeric',month:'long',year:'numeric'});
+export const labels={CONFIRMED:'Inscripción confirmada',PENDING:'Pendiente',PUBLISHED:'Publicado',DRAFT:'Borrador',CLOSED:'Cerrado',pending:'Pendiente',accepted:'Aceptado',completed:'Completado',cancelled:'Cancelado',verified:'Pago verificado',pending_review:'En revisión',rejected:'Rechazado',RECEIVED:'Recibida'};
+export function Status({value}){return <span className="badge">{labels[value]||value}</span>}
+export function Feedback({state}){return <><p role="alert" className="error">{state.error}</p><p role="status" className="success">{state.message}</p></>}
+export function State({resource,children}){if(resource.loading)return <p role="status" className="empty">Cargando…</p>;if(resource.error)return <div role="alert" className="empty">{resource.error}<button onClick={resource.reload}>Reintentar</button></div>;return children(resource.data);}
+export function Field({label,...props}){return <label>{label}<input {...props}/></label>}
+export function Textarea({label,...props}){return <label>{label}<textarea rows="4" {...props}/></label>}
+export function Heading({eyebrow,title,children}){return <div className="heading"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1>{children}</div>}
+export function Records({items,columns,actions}){if(!items.length)return <p className="empty">Todavía no hay registros.</p>;return <><table className="records"><thead><tr>{columns.map(c=><th key={c.label}>{c.label}</th>)}{actions&&<th>Acciones</th>}</tr></thead><tbody>{items.map((item,i)=><tr key={item.id||i}>{columns.map(c=><td key={c.label}>{c.render(item)}</td>)}{actions&&<td><div className="actions">{actions(item)}</div></td>}</tr>)}</tbody></table><div className="mobile-records">{items.map((item,i)=><article className="card" key={item.id||i}>{columns.map(c=><div key={c.label}><small>{c.label}</small><div>{c.render(item)}</div></div>)}{actions&&<div className="actions">{actions(item)}</div>}</article>)}</div></>}

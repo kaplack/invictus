@@ -1,0 +1,6 @@
+{
+  "name": "@base/pedidos-pagos", "version": "0.1.0", "private": true, "type": "module",
+  "exports": { ".": "./src/index.js" }, "files": ["src", "README.md"],
+  "engines": { "node": ">=22.12" },
+  "dependencies": { "@base/usuarios-acceso": "0.1.0", "@base/pagos-manuales": "0.1.0" }
+}

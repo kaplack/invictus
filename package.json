@@ -1,0 +1,56 @@
+{
+  "name": "invictus",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "workspaces": [
+    "vendor/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k \"npm:dev:api\" \"npm:dev:web\" \"npm:dev:admin\"",
+    "dev:api": "node --env-file=.env --watch server/server.js",
+    "dev:web": "vite --host localhost",
+    "build": "npm run build:web && npm run build:admin",
+    "start": "node --env-file-if-exists=.env server/server.js",
+    "db:generate": "prisma generate",
+    "db:deploy": "node --env-file-if-exists=.env scripts/migrate.js",
+    "test:integration": "node --env-file=.env --test tests/integration.test.js",
+    "db:deploy:test": "node --env-file=.env scripts/migrate.js --test",
+    "setup:admin": "node --env-file=.env scripts/setup-admin.js",
+    "dev:admin": "vite --config vite.admin.config.js",
+    "build:web": "vite build",
+    "build:admin": "vite build --config vite.admin.config.js"
+  },
+  "dependencies": {
+    "@base/archivos-imagenes": "0.1.0",
+    "@base/gestion-eventos": "1.0.0",
+    "@base/inscripciones-eventos": "1.0.0",
+    "@base/pagos-manuales": "0.1.0",
+    "@base/panel-administrativo": "0.1.0",
+    "@base/pedidos": "0.1.0",
+    "@base/pedidos-pagos": "0.1.0",
+    "@base/perfil-trayectoria": "1.0.0",
+    "@base/tienda-virtual": "1.0.0",
+    "@base/usuarios-acceso": "0.1.0",
+    "@prisma/client": "6.19.0",
+    "cookie-parser": "1.4.7",
+    "cors": "2.8.5",
+    "express": "5.2.1",
+    "express-rate-limit": "8.6.2",
+    "pg": "8.16.3",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "zod": "4.3.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@vitejs/plugin-react": "4.7.0",
+    "concurrently": "9.2.4",
+    "prisma": "6.19.0",
+    "supertest": "7.2.2",
+    "vite": "6.4.3"
+  }
+}

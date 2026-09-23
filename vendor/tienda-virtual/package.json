@@ -1,0 +1,21 @@
+{
+  "name": "@base/tienda-virtual",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "dependencies": {
+    "express": "5.2.1",
+    "@base/usuarios-acceso": "0.1.0",
+    "zod": "4.3.4"
+  }
+}

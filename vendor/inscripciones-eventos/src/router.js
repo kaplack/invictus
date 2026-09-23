@@ -1,0 +1,4 @@
+import { sendDomainError } from '@base/usuarios-acceso/contracts';
+import express from 'express'; import {RegistrationError} from './errors.js';
+export function createRegistrationRouter({service,getUser=req=>req.user??null}){const r=express.Router();const run=fn=>async(req,res)=>{try{res.json(await fn(req,res))}catch(e){return sendDomainError(res,e)}};r.post('/:eventId',run(req=>service.create(getUser(req),req.params.eventId)));r.get('/mine/:id',run(req=>service.getOwn(getUser(req),req.params.id)));r.post('/:id/proof',run(req=>service.submitProof(getUser(req),req.params.id,req.body?.fileId)));r.get('/admin/event/:eventId',run(req=>service.listManaged(getUser(req),req.params.eventId)));r.patch('/admin/:id/review',run(req=>service.review(getUser(req),req.params.id,req.body?.decision)));r.get('/public/:code',run(req=>service.publicValidate(req.params.code)));return r}
+

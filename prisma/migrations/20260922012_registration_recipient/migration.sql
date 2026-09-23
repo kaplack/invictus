@@ -1,0 +1,1 @@
+ALTER TABLE event_registration_config ADD CONSTRAINT event_registration_config_payment_recipient_id_fkey FOREIGN KEY (payment_recipient_id) REFERENCES payment_recipients(id) ON DELETE RESTRICT;

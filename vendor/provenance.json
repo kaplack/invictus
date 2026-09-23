@@ -1,0 +1,343 @@
+{
+  "source": "BaseReutilizable",
+  "snapshot": "2026-09-23",
+  "notes": "Selected package sources and manifests, unchanged. No demos, installed clients or development environments copied.",
+  "files": [
+    {
+      "path": "vendor/archivos-imagenes/package.json",
+      "sha256": "5cb054dab2bb10a38fd562414f0c1240523543330949052253baaf95df4d7a8a"
+    },
+    {
+      "path": "vendor/archivos-imagenes/README.md",
+      "sha256": "0cf74473509f8c9e47a23da3d0ee335abb7f3cc8128a8cad09aab83b58418a4c"
+    },
+    {
+      "path": "vendor/archivos-imagenes/src/index.js",
+      "sha256": "83308f2bd3882adda02574d4b03da4c17c501d9d92b25142413d5e53f66746de"
+    },
+    {
+      "path": "vendor/archivos-imagenes/src/policy.js",
+      "sha256": "6b0efff79b2d031da25fe70a8d3b2b0c5e41de4b0c11d58d35c29def73f0d5f3"
+    },
+    {
+      "path": "vendor/archivos-imagenes/src/repository.js",
+      "sha256": "ee4973c046a345faf7197d7f4551ac4b94f77cf27da4547717b70fd220cbeedb"
+    },
+    {
+      "path": "vendor/archivos-imagenes/src/router.js",
+      "sha256": "1d8d406274ea2de701342c1739c7f4ddce7bac1f5c659f0dc467b232b0c35bb3"
+    },
+    {
+      "path": "vendor/archivos-imagenes/src/service.js",
+      "sha256": "124c518720fec26c19bda48825587da9588cc47fd422a58d154c371903b5af00"
+    },
+    {
+      "path": "vendor/archivos-imagenes/src/storage.js",
+      "sha256": "3e7c4c687a353f8c7f607e425d89f57faf986593094b4e59fc5ebe907d3de8dd"
+    },
+    {
+      "path": "vendor/gestion-eventos/package.json",
+      "sha256": "43a79f59c634d98965149e17b3f818126d7aff72e4a50122f5855a1458f4e65a"
+    },
+    {
+      "path": "vendor/gestion-eventos/README.md",
+      "sha256": "86a8730d6281480a5e21f7b971c335d96a1787e85b09770022d71c8ca30bab17"
+    },
+    {
+      "path": "vendor/gestion-eventos/src/errors.js",
+      "sha256": "36ac66557637d2d5630fdd6a5b49f3e6cdd09799c7d01aa1f95b807b2091c166"
+    },
+    {
+      "path": "vendor/gestion-eventos/src/index.js",
+      "sha256": "60d31ce8ac71e3bc5c207052fb70cdc44c5d2cfd9aaa9c2335bdc034971dfc3b"
+    },
+    {
+      "path": "vendor/gestion-eventos/src/memory-store.js",
+      "sha256": "38360acb3c492fedde0af53c0dce318b93316342fda9ef3b166871384c584590"
+    },
+    {
+      "path": "vendor/gestion-eventos/src/prisma-store.js",
+      "sha256": "0ce9cd9f653596dc4ebc6f401dedff05d47030d5c8343ac4d96b370f8c9b327e"
+    },
+    {
+      "path": "vendor/gestion-eventos/src/registration-reader.js",
+      "sha256": "04226cde65b50a18fc86754ce87c0dafcf6b320e2dadeed0955349455905807c"
+    },
+    {
+      "path": "vendor/gestion-eventos/src/router.js",
+      "sha256": "fe3c928b9ee8fa12d92ad8bbff44786320c232bba3239ccc1e2c54d969e2352f"
+    },
+    {
+      "path": "vendor/gestion-eventos/src/service.js",
+      "sha256": "18705587dd3de7e02f7513bb4d71b19d3979f41882ef98c45f980ab975c99a2a"
+    },
+    {
+      "path": "vendor/gestion-eventos/src/validation.js",
+      "sha256": "b64e8275634d1154125aa4005a79f4a7075753434573b675b223707bc4ca73a6"
+    },
+    {
+      "path": "vendor/inscripciones-eventos/package.json",
+      "sha256": "9f59d37cad9e16d730fab4cafc85232be65bcfc877815a867e4dde0a39803955"
+    },
+    {
+      "path": "vendor/inscripciones-eventos/README.md",
+      "sha256": "c1ca1d94719032ca7200958d3b396e59f10bd46a2a90d6d909362bd3538e52a7"
+    },
+    {
+      "path": "vendor/inscripciones-eventos/src/errors.js",
+      "sha256": "541edf462210a879e41336af40511ecd15f776bc6b8bfd708ae07822f0a3c210"
+    },
+    {
+      "path": "vendor/inscripciones-eventos/src/index.js",
+      "sha256": "d1de2a9db25ad839ca36a5df43fd6bc643a12a6fbe01d33e3057e03b88dca41b"
+    },
+    {
+      "path": "vendor/inscripciones-eventos/src/memory-store.js",
+      "sha256": "7e12e0ecd3c7799b122efd30596c5e5d8be71cdc49c56448b33a3acc0ddb9311"
+    },
+    {
+      "path": "vendor/inscripciones-eventos/src/payment-adapter.js",
+      "sha256": "013d87a2a77b60112f55f3d7d96bde5cb8f7518e77afb75c9c08aed4e37c224e"
+    },
+    {
+      "path": "vendor/inscripciones-eventos/src/prisma-coordinator.js",
+      "sha256": "69703dc1c92536d08c3ea5449bb6c90e0daca4a97613c5cdb2468df52c2a3339"
+    },
+    {
+      "path": "vendor/inscripciones-eventos/src/prisma-store.js",
+      "sha256": "f15912a546779ea5582c1fe463bf1b163b07b2236cdec1c9edd19cf1caa99808"
+    },
+    {
+      "path": "vendor/inscripciones-eventos/src/router.js",
+      "sha256": "d094655177b838b587c6980940ff4cc2e32994a2ffe2b305ae354b020e71e66e"
+    },
+    {
+      "path": "vendor/inscripciones-eventos/src/service.js",
+      "sha256": "f070677b5519c3a5766d6d0286df9f6524c0f74f4abf8ecca04c3c53124ce886"
+    },
+    {
+      "path": "vendor/pagos-manuales/package.json",
+      "sha256": "cd1b87675fa9982cfdc27218decff8be34623131536b1b4d5b47e40a802024aa"
+    },
+    {
+      "path": "vendor/pagos-manuales/README.md",
+      "sha256": "39c856ea46fbd85c496fac035eb6fdd18252f4336faa572cfa5d2bf333b31a0b"
+    },
+    {
+      "path": "vendor/pagos-manuales/src/index.js",
+      "sha256": "d0bea1c5337d83e66992bc20d497b4f7bdea1a28be443c10e9666b761fa4078d"
+    },
+    {
+      "path": "vendor/pagos-manuales/src/operations.js",
+      "sha256": "798658867cca4aa4237b8afd42171df0b8c5da64866bbb131f967d6474ac86f7"
+    },
+    {
+      "path": "vendor/pagos-manuales/src/policy.js",
+      "sha256": "0e4468dd80c6d14ec8556206a77cd3874720f53d9da288ad5c53273d3e11826f"
+    },
+    {
+      "path": "vendor/pagos-manuales/src/recipients.js",
+      "sha256": "10e0af312499af6997f4beb0d5f3dc38b9258ea6c6afb7f0b07740e725fcd8f3"
+    },
+    {
+      "path": "vendor/pagos-manuales/src/router.js",
+      "sha256": "727defc2ead1aadda765e57ea77593105dcf83e6c2cd03b4b8afc2be2dfb66c4"
+    },
+    {
+      "path": "vendor/pagos-manuales/src/service.js",
+      "sha256": "9ffa383796cf4f20d69431b1b25b5a61c0b779fd488af1bcf6bba3d42b23ea85"
+    },
+    {
+      "path": "vendor/panel-administrativo/package.json",
+      "sha256": "5b0503f2c15cec2bd98ef1848668080e4f381932b4cb5ea8391600d32acaa80b"
+    },
+    {
+      "path": "vendor/panel-administrativo/README.md",
+      "sha256": "41dfdd1d472ac38470254a01d6dc9ae2856b3f80979ac2041b34f4bf4c2730c3"
+    },
+    {
+      "path": "vendor/panel-administrativo/src/AdminPanel.jsx",
+      "sha256": "d082e3933d45fc1f1b1da04121bd5869fc844372991e32bd9d821f432cd901d6"
+    },
+    {
+      "path": "vendor/panel-administrativo/src/server.js",
+      "sha256": "9d6bc8997bb35d96e6f1e941857b2cb85f9d2410e40baad999421f83ce388141"
+    },
+    {
+      "path": "vendor/panel-administrativo/src/styles.css",
+      "sha256": "574a32543ec50014d7cbc2cbac2a1ec440e5660e8d9626d87f392de4db13c6bf"
+    },
+    {
+      "path": "vendor/pedidos/package.json",
+      "sha256": "406650b5bf37c6eb4a4a7732908804e3f95a4a5694c1c8cf2aba8f57cc478bd4"
+    },
+    {
+      "path": "vendor/pedidos/README.md",
+      "sha256": "b40b33f457e17d1f8c33c86a6eeeeac762923727457d40c71f7247b1dc5f0e8d"
+    },
+    {
+      "path": "vendor/pedidos/src/index.js",
+      "sha256": "53d951fc643837a97accaed84901f1953497b72e260521d7a341ea38302fb354"
+    },
+    {
+      "path": "vendor/pedidos/src/router.js",
+      "sha256": "0f82a34fe293ac91bc183a5e1627e142de104f5e55bf8668e638336c8d4e89cc"
+    },
+    {
+      "path": "vendor/pedidos/src/service.js",
+      "sha256": "160c35f268b2dfe9cdf45510b8c5e2b2e7084561a029aa405e31d2af6f8115c2"
+    },
+    {
+      "path": "vendor/pedidos-pagos/package.json",
+      "sha256": "5d96832748811b34b4863a621c4cf3602418f726f563b7268496b4fed70673cf"
+    },
+    {
+      "path": "vendor/pedidos-pagos/README.md",
+      "sha256": "20c01bc488c7b632199d45a5fdad52cce42ddc6a33e254b4936e54bf64dc5a08"
+    },
+    {
+      "path": "vendor/pedidos-pagos/src/index.js",
+      "sha256": "b82d5d2efd5a6e98df0ad13e309c797d6b42cbc8831e3e6c109028fc31de0772"
+    },
+    {
+      "path": "vendor/pedidos-pagos/src/order-payment.js",
+      "sha256": "b3972fdfa25db0b005383f73acce078a287ac97a0ae4489107f10c43e6b7fe9f"
+    },
+    {
+      "path": "vendor/pedidos-pagos/src/prisma-store.js",
+      "sha256": "de93cbe061e31a10631bf0a4d40c562b448b99c2aec75d54261b56d753281990"
+    },
+    {
+      "path": "vendor/perfil-trayectoria/package.json",
+      "sha256": "c7e98879db08f18b0cf45288e8a8d29c3b7a01204481a858f0029c7276e330e6"
+    },
+    {
+      "path": "vendor/perfil-trayectoria/README.md",
+      "sha256": "8f013337e85cf87720ed0651c86734cb66932c45abbe1f44d2df65f5f60d3a95"
+    },
+    {
+      "path": "vendor/perfil-trayectoria/src/errors.js",
+      "sha256": "3fddaaa29aeb8de5dd299c4f062b67c42d44960ad563d668bb8c90a1a046238c"
+    },
+    {
+      "path": "vendor/perfil-trayectoria/src/index.js",
+      "sha256": "3b59fc6ff74c44fd3a39cf188fe7c29cd9b1da86f6a16de21237b9b560586cfe"
+    },
+    {
+      "path": "vendor/perfil-trayectoria/src/memory-store.js",
+      "sha256": "c8060217941ae95ce4eda18773d4cab4fa50a4938f6f4ea33a1761bbb60b877d"
+    },
+    {
+      "path": "vendor/perfil-trayectoria/src/prisma-store.js",
+      "sha256": "0c20b3695b260f3d6602e314a4f44e5a755253a8628fec1d350e4ac7dd15e285"
+    },
+    {
+      "path": "vendor/perfil-trayectoria/src/router.js",
+      "sha256": "35fc59d586aaab298c1b3c832b9e42ce5aee11d69fb8dea8c0f67551c63074e8"
+    },
+    {
+      "path": "vendor/perfil-trayectoria/src/service.js",
+      "sha256": "ab9edfedfa1a369bf90b3df49f22c66c87298f1f93b388094d7e7ed34f646801"
+    },
+    {
+      "path": "vendor/perfil-trayectoria/src/validation.js",
+      "sha256": "7549e9616af5229784763f614a9ce5515ff4da0904d371591bce09c27ea1fda2"
+    },
+    {
+      "path": "vendor/tienda-virtual/package.json",
+      "sha256": "e835ab95937468c6e913b2f274be7b5e5f063153d18ebeaf37de73d32372d7cd"
+    },
+    {
+      "path": "vendor/tienda-virtual/README.md",
+      "sha256": "5603f634106cb45b696dcacdc75f03cbe8bf2071182f5d81fe662f1656341344"
+    },
+    {
+      "path": "vendor/tienda-virtual/src/errors.js",
+      "sha256": "1091a30a8de0d5c1c3fdae1949a1a35c98378722f5cbcd1c953e84ffa9796534"
+    },
+    {
+      "path": "vendor/tienda-virtual/src/index.js",
+      "sha256": "87e27216b73d7e7bf55f47f86bf91919631ad29fb6d6d0605b81700c5bee8cee"
+    },
+    {
+      "path": "vendor/tienda-virtual/src/memory-store.js",
+      "sha256": "e637290b6af290803e8ac020109e57f0d2de79123d53da3b9f454cc20c19fb34"
+    },
+    {
+      "path": "vendor/tienda-virtual/src/order-adapter.js",
+      "sha256": "42f79abec17c00f1f5902277297958c65ab37a709d22f6f51de74955c610316d"
+    },
+    {
+      "path": "vendor/tienda-virtual/src/prisma-checkout.js",
+      "sha256": "92c1ae8d00c193bd234b09a61173aa93b6ebe3252ca8d3595de87eba6a6644e2"
+    },
+    {
+      "path": "vendor/tienda-virtual/src/prisma-store.js",
+      "sha256": "eed457fd181f7072de31f37cb3eea5dcad7dcecb653eebe61b70e40447f5d6ad"
+    },
+    {
+      "path": "vendor/tienda-virtual/src/router.js",
+      "sha256": "bb06b7e5978fc6e8dc71cd9a0014ea5803219b725ca72d82a209430ca0bbd2ab"
+    },
+    {
+      "path": "vendor/tienda-virtual/src/service.js",
+      "sha256": "44dbd5481c2c36d5c0400f73767caba8df962aaf5fbd3eb5e2cc5b7f9bb5a593"
+    },
+    {
+      "path": "vendor/tienda-virtual/src/validation.js",
+      "sha256": "d3f81e39648aeb66f7959cbd730bdbace4d29acba60ab92706b0026c72c3989a"
+    },
+    {
+      "path": "vendor/usuarios-acceso/package.json",
+      "sha256": "eddd2f0498e5f1bd220e90f72746033594b0c0e57ff4ffc74c228c270d5917a9"
+    },
+    {
+      "path": "vendor/usuarios-acceso/README.md",
+      "sha256": "ed977360eecda7cdc52154cc6511bf06971936cf8f2ece38ce5b3eeb70d5aa16"
+    },
+    {
+      "path": "vendor/usuarios-acceso/src/auth/auth.routes.js",
+      "sha256": "d20eb829b21dd2379488670b3f81f7312ae5b83a431e99c6d6c37dacdf6e6330"
+    },
+    {
+      "path": "vendor/usuarios-acceso/src/auth/auth.service.js",
+      "sha256": "15b737ea84995de473e8672d0c4c92a1f7c70445fbc3ba50a30eaf947c0dd88c"
+    },
+    {
+      "path": "vendor/usuarios-acceso/src/auth/auth.validation.js",
+      "sha256": "a7f79ecee551d532a895519d3d1616c615ce57a3417f62567085ce649fa6be12"
+    },
+    {
+      "path": "vendor/usuarios-acceso/src/auth/cookies.js",
+      "sha256": "2d8ab55d6c8b20221ac5488e86e097f44400744ac2bbb71ead81dd1beccadc20"
+    },
+    {
+      "path": "vendor/usuarios-acceso/src/auth/password.js",
+      "sha256": "fe12ff94d3d6dcd929debad5621f6e4ac2b5114e3672f2c8ea4a50bbffe8023f"
+    },
+    {
+      "path": "vendor/usuarios-acceso/src/auth/session-token.js",
+      "sha256": "bc358d807f4bf77eb95ab5e53cbc4406600e9efee289db2bd80e05cbafc0235f"
+    },
+    {
+      "path": "vendor/usuarios-acceso/src/contracts.js",
+      "sha256": "fda948b30d38ab155a79cf1d1c784ba91de059896679913aec7c2659a5e62227"
+    },
+    {
+      "path": "vendor/usuarios-acceso/src/coordination.js",
+      "sha256": "91d264255a35d5d97fd1b9b3bf384e4a33592f1704a1b13495dc58e0e44c33e2"
+    },
+    {
+      "path": "vendor/usuarios-acceso/src/http/errors.js",
+      "sha256": "64a9c55f028fd4d2a169c6b7ec20803c850376fb1521678a5b1810440d4c2c17"
+    },
+    {
+      "path": "vendor/usuarios-acceso/src/index.js",
+      "sha256": "c105a8c30f9e7b119d05741c7c4871eddbd1fa8ae6ed4c032bc3e20fbfec124b"
+    },
+    {
+      "path": "vendor/usuarios-acceso/src/middleware/auth.js",
+      "sha256": "c4c755799cfea48458335fc82ca4160c96c207d6fce05ffdc5e55e3133954150"
+    }
+  ]
+}

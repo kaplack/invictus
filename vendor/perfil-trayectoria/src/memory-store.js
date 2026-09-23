@@ -1,0 +1,1 @@
+export function createMemoryProfileStore(){const profiles=new Map();return{profiles:{get:id=>profiles.get(id),getByUser:userId=>[...profiles.values()].find(p=>p.userId===userId),upsert:p=>{profiles.set(p.id,p);return p},list:()=>[...profiles.values()]}}}

@@ -1,0 +1,5 @@
+export const base=import.meta.env.VITE_API_URL||'/api';
+export async function api(path,method='GET',body){let res;try{res=await fetch(base+path,{method,credentials:'include',headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});}catch{throw new Error('No hay conexión. Tus cambios no se enviaron; vuelve a intentarlo cuando estés en línea.');}if(res.status===204)return null;const data=await res.json();if(!res.ok){const e=new Error(data.error?.message||'No se pudo completar la solicitud');e.status=res.status;throw e;}return data;}
+export async function upload(file,visibility='private'){const res=await fetch(base+'/files',{method:'POST',credentials:'include',headers:{'Content-Type':file.type,'X-File-Name':encodeURIComponent(file.name),'X-File-Visibility':visibility},body:file});const data=await res.json();if(!res.ok)throw new Error(data.error?.message||'No se pudo cargar el archivo');return data.file;}
+export const fileUrl=id=>`${base}/files/${id}/public`;
+export async function openFile(id){const data=await api(`/files/${id}/access`);window.location.assign(base.replace(/\/api$/,'')+data.url);}

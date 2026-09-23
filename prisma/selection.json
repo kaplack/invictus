@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "modules": [
+    "usuarios",
+    "archivos",
+    "panel",
+    "eventos",
+    "inscripciones",
+    "perfiles",
+    "comercio",
+    "tienda"
+  ]
+}

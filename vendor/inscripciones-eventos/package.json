@@ -1,0 +1,22 @@
+{
+  "name": "@base/inscripciones-eventos",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "express": "5.2.1",
+    "zod": "4.3.4",
+    "@base/usuarios-acceso": "0.1.0"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "exports": {
+    ".": "./src/index.js"
+  }
+}

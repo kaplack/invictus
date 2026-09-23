@@ -1,0 +1,4 @@
+import { sendDomainError } from '@base/usuarios-acceso/contracts';
+import express from 'express'; import {EventError} from './errors.js';
+export function createEventRouter({service,getUser=req=>req.user??null,legacyErrors=false}){const r=express.Router();const run=fn=>async(req,res)=>{try{res.json(await fn(req,res))}catch(e){return sendDomainError(res,e,{legacy:legacyErrors})}};r.get('/public/:slug',run(req=>service.getPublic(req.params.slug)));r.get('/admin/events',run(req=>service.listMine(getUser(req))));r.post('/admin/events',run(req=>service.create(getUser(req),req.body)));r.get('/admin/events/:id',run(req=>service.getManaged(getUser(req),req.params.id)));r.patch('/admin/events/:id',run(req=>service.update(getUser(req),req.params.id,req.body)));r.post('/admin/events/:id/publish',run(req=>service.publish(getUser(req),req.params.id)));return r}
+

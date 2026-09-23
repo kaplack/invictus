@@ -1,0 +1,24 @@
+{
+  "name": "@base/usuarios-acceso",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./contracts": "./src/contracts.js"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.0",
+    "express": "5.2.1",
+    "express-rate-limit": "8.6.2",
+    "zod": "4.3.4"
+  },
+  "files": [
+    "src",
+    "prisma",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  }
+}

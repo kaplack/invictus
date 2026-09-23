@@ -1,0 +1,25 @@
+{
+  "name": "@base/panel-administrativo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/server.js",
+    "./react": "./src/AdminPanel.jsx",
+    "./styles.css": "./src/styles.css"
+  },
+  "dependencies": {
+    "@base/usuarios-acceso": "0.1.0",
+    "express": "5.2.1"
+  },
+  "peerDependencies": {
+    "react": "^19.2.3"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  }
+}
