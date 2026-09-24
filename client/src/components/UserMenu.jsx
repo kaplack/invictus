@@ -17,7 +17,7 @@ export default function UserMenu({user, manager, route, onLogout}) {
   return <div className="user-menu" ref={root} onBlur={event => {
     if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
   }}>
-    <button type="button" className="user-menu-trigger" ref={trigger} aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(value => !value)}>
+    <button type="button" className="user-menu-trigger" ref={trigger} aria-label={`Mi cuenta: ${name}`} title="Mi cuenta" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(value => !value)}>
       <span className="user-menu-avatar" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20v-2a7 7 0 0 1 14 0v2"/></svg></span>
       <span className="user-menu-name" title={name}>{name}</span>
       <svg className="user-menu-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
