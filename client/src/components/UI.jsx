@@ -1,7 +1,7 @@
 import React from 'react';
 export const money=n=>new Intl.NumberFormat('es-PE',{style:'currency',currency:'PEN'}).format(n/100);
 export const date=d=>new Date(d).toLocaleDateString('es-PE',{day:'numeric',month:'long',year:'numeric'});
-export const labels={CONFIRMED:'Inscripción confirmada',PENDING:'Pendiente',PUBLISHED:'Publicado',DRAFT:'Borrador',CLOSED:'Cerrado',pending:'Pendiente',accepted:'Aceptado',completed:'Completado',cancelled:'Cancelado',verified:'Pago verificado',pending_review:'En revisión',rejected:'Rechazado',RECEIVED:'Recibida'};
+export const labels={PENDING_REVIEW:'En revisión por Invictus',CHANGES_REQUESTED:'Cambios solicitados',APPROVED:'Aprobado',CONFIRMED:'Inscripción confirmada',PENDING:'Pendiente',PUBLISHED:'Publicado',DRAFT:'Borrador',CLOSED:'Cerrado',pending:'Pendiente',accepted:'Aceptado',completed:'Completado',cancelled:'Cancelado',verified:'Pago verificado',pending_review:'En revisión',rejected:'Rechazado',RECEIVED:'Recibida'};
 export function Status({value}){return <span className="badge">{labels[value]||value}</span>}
 export function Feedback({state}){return <><p role="alert" className="error">{state.error}</p><p role="status" className="success">{state.message}</p></>}
 export function State({resource,children}){if(resource.loading)return <p role="status" className="empty">Cargando…</p>;if(resource.error)return <div role="alert" className="empty">{resource.error}<button onClick={resource.reload}>Reintentar</button></div>;return children(resource.data);}

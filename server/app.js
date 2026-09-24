@@ -25,6 +25,13 @@ export async function createApp({database,Prisma,config}) {
  app.get('/api/health',async(req,res)=>{await database.$queryRaw`SELECT 1`;res.json({status:'ok'});});
  app.use('/api/files',createFileRouter({service:files,requireAuth:auth.requireAuth}));
  app.use('/api/panel',createPanelAccess({resolvePermissions}).router({requireAuth:auth.requireAuth}));
+ app.get('/api/events/mine',auth.requireAuth,async(req,res)=>res.json(await s.personalEvents.list(req.user)));
+ app.get('/api/events/mine/:id/attendees',auth.requireAuth,async(req,res)=>res.json(await s.personalEvents.attendees(req.user,req.params.id)));
+ app.get('/api/events/mine/:id',auth.requireAuth,async(req,res)=>res.json(await s.personalEvents.get(req.user,req.params.id)));
+ app.post('/api/events/mine',auth.requireAuth,async(req,res)=>res.status(201).json(await s.personalEvents.save(req.user,null,req.body)));
+ app.patch('/api/events/mine/:id',auth.requireAuth,async(req,res)=>res.json(await s.personalEvents.save(req.user,req.params.id,req.body)));
+ app.post('/api/events/mine/:id/submit',auth.requireAuth,async(req,res)=>res.json(await s.personalEvents.submit(req.user,req.params.id)));
+ app.post('/api/events/manage/:id/review',auth.requireAuth,async(req,res)=>res.json(await s.personalEvents.review(req.user,req.params.id,req.body)));
  app.get('/api/events',async(req,res)=>res.json(await s.events.publicList()));
  app.get('/api/events/public/:slug',async(req,res)=>res.json(await s.events.detail(req.params.slug)));
  app.get('/api/events/manage',auth.requireAuth,async(req,res)=>res.json(await s.events.list(req.user)));

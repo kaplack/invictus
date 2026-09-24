@@ -240,6 +240,9 @@ model Event {
   venue String?
   virtualUrl String? @map("virtual_url")
   status EventStatus @default(DRAFT)
+  source String @default("INVICTUS")
+  reviewStatus String @default("DRAFT") @map("review_status")
+  reviewNote String? @map("review_note")
   primaryImageFileId String? @map("primary_image_file_id") @db.Uuid
   primaryImage StoredFile? @relation("EventPrimary", fields: [primaryImageFileId], references: [id], onDelete: Restrict)
   bannerImageFileId String? @map("banner_image_file_id") @db.Uuid
