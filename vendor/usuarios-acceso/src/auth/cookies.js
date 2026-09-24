@@ -2,7 +2,7 @@ export function sessionCookieOptions({ secure = false, maxAge } = {}) {
   return {
     httpOnly: true,
     secure,
-    sameSite: 'lax',
+    sameSite: secure ? 'none' : 'lax',
     path: '/',
     maxAge,
   };
