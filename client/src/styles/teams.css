@@ -1,0 +1,14 @@
+.teams-page { overflow-wrap: anywhere; }
+.teams-page > button { margin-bottom: 1.5rem; }
+.team-identity, .team-summary { display: flex; align-items: center; gap: 1rem; }
+.team-identity img { width: 48px; height: 48px; object-fit: contain; flex-shrink: 0; }
+.team-logo { width: 96px; height: 96px; object-fit: contain; flex-shrink: 0; }
+.team-summary { align-items: flex-start; }
+.team-summary > div { min-width: 0; }
+.team-description { white-space: pre-wrap; }
+.team-contact { display: grid; gap: .6rem; }
+.team-contact dt { font-weight: 600; }
+.team-contact dd { margin: .2rem 0; }
+.team-members { margin-top: 2.5rem; }
+.team-pagination { margin-top: 1.5rem; align-items: center; }
+@media (max-width: 600px) { .team-summary { flex-direction: column; } }

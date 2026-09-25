@@ -9,7 +9,7 @@ export function Account({user}) {
 export function Registrations() {
   const r=useData('/profile/registrations');
   return <><Heading eyebrow="MI CUENTA" title="Mis inscripciones"><p>Consulta los eventos en los que participas y el estado de tus inscripciones.</p></Heading>
-    <State resource={r}>{items=>items.length?<Records items={items} columns={[{label:'Evento',render:i=>i.event.title},{label:'Fecha',render:i=>date(i.event.startsAt)},{label:'Estado',render:i=><Status value={i.status}/>}]}/>:<div className="empty"><p>Aún no te has inscrito en ningún evento.</p><a className="button" href="#/eventos">Explorar eventos</a></div>}</State>
+    <State resource={r}>{items=>items.length?<Records items={items} columns={[{label:'Evento',render:i=>i.event.title},{label:'Team organizador',render:i=>i.event.team?.name||'—'},{label:'Fecha',render:i=>date(i.event.startsAt)},{label:'Estado',render:i=><Status value={i.status}/>}]}/>:<div className="empty"><p>Aún no te has inscrito en ningún evento.</p><a className="button" href="#/eventos">Explorar eventos</a></div>}</State>
     <p className="muted">Una inscripción confirmada no acredita asistencia, resultados ni logros.</p>
   </>;
 }

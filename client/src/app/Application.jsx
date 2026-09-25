@@ -1,5 +1,6 @@
 import MainNavigation from "../components/MainNavigation.jsx";
 import MyEvents from "../pages/MyEvents.jsx";
+import Teams from "../pages/Teams.jsx";
 import UserMenu from "../components/UserMenu.jsx";
 import React, { useState, useEffect } from "react";
 import { api } from "../services/api.js";
@@ -56,7 +57,7 @@ export default function Application() {
       "/mis-eventos",
       "/carrito",
       "/pedidos",
-    ].includes(route);
+    ].includes(route) || route === '/mis-teams' || route.startsWith('/mis-teams/');
   if (loading)
     return (
       <div className="empty" role="status">
@@ -76,6 +77,7 @@ export default function Application() {
     page = <Account user={user} />;
   else if (route === "/inscripciones") page = <Registrations />;
   else if (route === "/mis-eventos") page = <MyEvents user={user} />;
+  else if (route === '/mis-teams' || route.startsWith('/mis-teams/')) page = <Teams id={route.split('/')[2]} user={user}/>;
   else if (route === "/carrito") page = <Cart cart={cart} setCart={setCart} />;
   else if (route === "/pedidos") page = <Orders />;
   else

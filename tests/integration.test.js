@@ -18,7 +18,8 @@ test('integración real: identidad, cupos, stock, pagos, cotización y archivos'
  const admin=await account('ADMIN'),organizer=await account('ORGANIZER'),a=await account(),b=await account();
  await db.paymentRecipient.create({data:{id:recipientId,name:'Invictus TEST',phone:'999111222',holder:'Prueba'}});await db.recipientMember.create({data:{recipientId,userId:admin.user.id,manage:true,review:true}});
  await post(a.agent,'/events/manage',{title:'No autorizado'}).expect(403);
- const event=(await post(organizer.agent,'/events/mine',{title:'EVENTO TEST '+randomUUID(),description:'Evento de integración, sin asistencia acreditada.',startsAt:'2027-06-20T14:00:00Z',timeZone:'America/Lima',venue:'Lima',maxCapacity:1}).expect(201)).body;
+ const team=(await post(organizer.agent,'/teams',{name:'Team de integración'}).expect(201)).body;
+ const event=(await post(organizer.agent,'/events/mine',{teamId:team.id,title:'EVENTO TEST '+randomUUID(),description:'Evento de integración, sin asistencia acreditada.',startsAt:'2027-06-20T14:00:00Z',timeZone:'America/Lima',venue:'Lima',maxCapacity:1}).expect(201)).body;
  await post(organizer.agent,`/events/manage/${event.id}/publish`,{}).expect(403);
  await post(organizer.agent,`/events/mine/${event.id}/submit`,{}).expect(200);
  await post(admin.agent,`/events/manage/${event.id}/review`,{decision:'APPROVE'}).expect(200);
@@ -51,13 +52,14 @@ test('integración real: identidad, cupos, stock, pagos, cotización y archivos'
 
 test('eventos personales: propiedad, revisión, correcciones y aprobación',async()=>{
  const a=await account(),b=await account(),admin=await account('ADMIN');
- const input={title:'Evento externo '+randomUUID(),description:'Evento propuesto por participante',startsAt:'2027-08-01T14:00:00Z',timeZone:'America/Lima',venue:'La Punta',maxCapacity:30};
+ const team=(await post(a.agent,'/teams',{name:'Team externo'}).expect(201)).body;
+ const input={teamId:team.id,title:'Evento externo '+randomUUID(),description:'Evento propuesto por participante',startsAt:'2027-08-01T14:00:00Z',timeZone:'America/Lima',venue:'La Punta',maxCapacity:30};
  const event=(await post(a.agent,'/events/mine',input).expect(201)).body;
  assert.equal(event.source,'EXTERNAL');assert.equal(event.reviewStatus,'DRAFT');
  await request(app).get('/api/events/public/'+event.publicSlug).expect(404);
- await b.agent.get('/api/events/mine/'+event.id).expect(403);
- await patch(b.agent,'/events/mine/'+event.id,input).expect(403);
- await post(b.agent,`/events/mine/${event.id}/submit`,{}).expect(403);
+ await b.agent.get('/api/events/mine/'+event.id).expect(404);
+ await patch(b.agent,'/events/mine/'+event.id,input).expect(404);
+ await post(b.agent,`/events/mine/${event.id}/submit`,{}).expect(404);
  assert.ok(!(await b.agent.get('/api/events/mine').expect(200)).body.some(e=>e.id===event.id));
  await patch(a.agent,'/events/mine/'+event.id,{...input,status:'PUBLISHED'}).expect(403);
  await post(admin.agent,`/events/manage/${event.id}/publish`,{}).expect(409);
@@ -75,9 +77,10 @@ test('eventos personales: propiedad, revisión, correcciones y aprobación',asyn
  await patch(a.agent,'/events/mine/'+event.id,input).expect(409);
  await post(a.agent,`/events/${event.id}/register`,{}).expect(201);
  const attendees=(await a.agent.get(`/api/events/mine/${event.id}/attendees`).expect(200)).body;assert.equal(attendees.length,1);assert.equal(attendees[0].participant.id,a.user.id);
- await b.agent.get(`/api/events/mine/${event.id}/attendees`).expect(403);
+ await b.agent.get(`/api/events/mine/${event.id}/attendees`).expect(404);
  await request(app).get(`/api/events/mine/${event.id}/attendees`).expect(401);
- const official=(await post(admin.agent,'/events/manage',input).expect(201)).body;
+ const officialTeam=(await post(admin.agent,'/teams',{name:'Team Invictus'}).expect(201)).body;
+ const official=(await post(admin.agent,'/events/manage',{...input,teamId:officialTeam.id}).expect(201)).body;
  assert.equal(official.source,'INVICTUS');
  await post(admin.agent,`/events/manage/${official.id}/publish`,{}).expect(200);
 });

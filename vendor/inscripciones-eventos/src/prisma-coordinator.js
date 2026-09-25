@@ -3,9 +3,10 @@ import { createPrismaRegistrationStore } from './prisma-store.js';
 import { createRegistrationService } from './service.js';
 import { createRegistrationPaymentAdapter } from './payment-adapter.js';
 import { RegistrationError } from './errors.js';
+import QRCode from 'qrcode';
 
 export function createPrismaRegistrationCoordinator({ database, Prisma, commerceStore, openPaymentOperation,
-  publicBaseUrl, resolvePermissions, policy }) {
+  publicBaseUrl, resolvePermissions, policy, authorizeManage, autoConfirmFree = false }) {
   if (policy !== 'reserve-until-terminal') throw new TypeError('Selecciona policy: reserve-until-terminal');
   requirePort(commerceStore, ['run'], 'commerceStore');
   if (!database.eventRegistrationConfig || !Prisma?.DbNull || typeof openPaymentOperation !== 'function' || typeof resolvePermissions !== 'function')
@@ -23,8 +24,15 @@ export function createPrismaRegistrationCoordinator({ database, Prisma, commerce
   } });
   const profilesFor = db => db.participantProfile ? { get: id => db.participantProfile.findUnique({ where: { id } }) } : undefined;
   const serviceFor = tx => createRegistrationService({ store: storeFor(tx.database), profileReader: profilesFor(tx.database), publicBaseUrl: baseUrl,
+    authorizeManage: authorizeManage ? (user, event) => authorizeManage(tx.database, user, event) : undefined,
     async onCreated(registration, event) {
-      if (event.amountCents === 0) return registration;
+      if (event.amountCents === 0) {
+        if (!autoConfirmFree) return registration;
+        // Explicit host policy, executed only after a valid free enrollment; no impersonated organizer.
+        const participationCode = `EV-${crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase()}`;
+        return storeFor(tx.database).registrations.update(registration.id, { ...registration, status: 'CONFIRMED', participationCode,
+          participationQrDataUrl: await QRCode.toDataURL(`${baseUrl}/participacion/${participationCode}`) });
+      }
       const operation = await openPaymentOperation(tx, { id: registration.id, sourceType: 'registration', sourceId: registration.id,
         payerId: registration.userId, recipientId: event.paymentRecipientId, amountCents: event.amountCents, currency: event.currency });
       return storeFor(tx.database).registrations.update(registration.id, { ...registration, paymentInstructionsSnapshot: operation.instructions });
@@ -42,7 +50,9 @@ export function createPrismaRegistrationCoordinator({ database, Prisma, commerce
         throw new RegistrationError('Configuración inválida', 400, 'INVALID_INPUT');
       return commerceStore.run(null, async tx => {
         const event = await tx.database.event.findUnique({ where: { id: eventId } });
-        if (!event || event.organizerId !== user.id && user.role !== 'SUPERADMIN') throw new RegistrationError('Evento no disponible', 403, 'FORBIDDEN');
+        if (!event) throw new RegistrationError('Evento no disponible', 403, 'FORBIDDEN');
+        if (authorizeManage) await authorizeManage(tx.database, user, event);
+        else if (event.organizerId !== user.id && user.role !== 'SUPERADMIN') throw new RegistrationError('Evento no disponible', 403, 'FORBIDDEN');
         if (input.amountCents > 0) {
           const grants = await resolvePermissions(user);
           const member = await tx.recipients.access(input.paymentRecipientId, user.id);

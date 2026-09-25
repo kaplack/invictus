@@ -11,6 +11,8 @@ import { createPanelAccess } from '@base/panel-administrativo';
 import { composeServices } from './services.js';
 import { resolvePermissions } from './permissions.js';
 import { createQuoteService } from './quotes.js';
+import { createTeamService } from './teams/service.js';
+import { createTeamRouter } from './teams/routes.js';
 export async function createApp({database,Prisma,config}) {
  const app=express();app.disable('x-powered-by');app.set('trust proxy',config.TRUST_PROXY);
  app.use(cors({origin:(origin,done)=>done(null,!origin||config.origins.includes(origin)),credentials:true}));
@@ -22,6 +24,7 @@ export async function createApp({database,Prisma,config}) {
  const storage=config.STORAGE_DRIVER==='s3'?await createS3Storage({bucket:config.S3_BUCKET,region:config.AWS_REGION}):createLocalStorage({directory:config.UPLOAD_DIRECTORY});
  const files=createFileService({repository:createPrismaFileRepository(database),storage,signingKey:config.FILE_SIGNING_KEY});
  const s=composeServices({database,Prisma,files,config});const quotes=createQuoteService(database);
+ app.use('/api/teams',createTeamRouter({service:createTeamService({database,files}),requireAuth:auth.requireAuth}));
  app.get('/api/health',async(req,res)=>{await database.$queryRaw`SELECT 1`;res.json({status:'ok'});});
  app.use('/api/files',createFileRouter({service:files,requireAuth:auth.requireAuth}));
  app.use('/api/panel',createPanelAccess({resolvePermissions}).router({requireAuth:auth.requireAuth}));

@@ -11,6 +11,8 @@ enum UserStatus {
   SUSPENDED
 }
 model User {
+  createdEvents Event[] @relation("EventCreator")
+  teamMemberships TeamMember[]
   shopCartUserRows ShopCart[] @relation("ShopCartUser")
   eventOrganizerRows Event[] @relation("EventOrganizer")
   profileUserRows ParticipantProfile[] @relation("ProfileUser")
@@ -33,6 +35,7 @@ model User {
   @@map("users")
 }
 model StoredFile {
+  teamLogos Team[]
   shopImageRows ShopProduct[] @relation("ShopImage")
   eventPrimaryRows Event[] @relation("EventPrimary")
   eventBannerRows Event[] @relation("EventBanner")
@@ -225,7 +228,48 @@ enum EventStatus {
   FINISHED
   CANCELLED
 }
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Team {
+  events Event[]
+  id String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(120)
+  description String @default("") @db.VarChar(2000)
+  logoFileId String? @map("logo_file_id") @db.Uuid
+  logo StoredFile? @relation(fields: [logoFileId], references: [id], onDelete: Restrict)
+  contactName String? @map("contact_name") @db.VarChar(120)
+  phone String? @db.VarChar(40)
+  whatsapp String? @db.VarChar(40)
+  email String? @db.VarChar(254)
+  active Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  members TeamMember[]
+  @@map("teams")
+}
+
+model TeamMember {
+  id String @id @default(uuid()) @db.Uuid
+  teamId String @map("team_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  role TeamRole @default(MEMBER)
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@unique([teamId, userId])
+  @@index([userId, joinedAt])
+  @@map("team_members")
+}
 model Event {
+  teamId String? @map("team_id") @db.Uuid
+  team Team? @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  createdByUserId String? @map("created_by_user_id") @db.Uuid
+  createdBy User? @relation("EventCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
   registrationEventRows EventRegistration[] @relation("RegistrationEvent")
   registrationConfigEventRows EventRegistrationConfig[] @relation("RegistrationConfigEvent")
   id String @id @db.Uuid
@@ -252,6 +296,7 @@ model Event {
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   benefits EventBenefit[]
   @@index([organizerId, status], map: "events_organizer_status_idx")
+  @@index([teamId, status], map: "events_team_status_idx")
   @@map("events")
 }
 model EventBenefit {

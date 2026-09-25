@@ -1,0 +1,52 @@
+import { chromium, expect } from '@playwright/test';
+import { createServer } from 'vite';
+import react from '@vitejs/plugin-react';
+import { mkdir } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { PrismaClient, Prisma } from '../prisma/client/index.js';
+import { createApp } from '../server/app.js';
+import { readConfig } from '../server/config.js';
+
+const url = new URL(process.env.TEST_DATABASE_URL);
+if (!['localhost', '127.0.0.1'].includes(url.hostname) || url.pathname !== '/invictus_test') throw new Error('Solo invictus_test local');
+const db = new PrismaClient({ datasources: { db: { url: url.href } } });
+const origin = 'http://localhost:5174';
+const app = await createApp({ database: db, Prisma, config: readConfig({ ...process.env, DATABASE_URL: url.href, NODE_ENV: 'test', STORAGE_DRIVER: 'local', WEB_ORIGINS: origin, UPLOAD_DIRECTORY: '.local/test-uploads' }) });
+const server = app.listen(3101);
+let vite, browser;
+try {
+  vite = await createServer({ configFile: false, root: 'client', plugins: [react()], server: { host: 'localhost', port: 5174, strictPort: true, proxy: { '/api': 'http://localhost:3101' } } });
+  await vite.listen();
+  browser = await chromium.launch({ channel: 'msedge', headless: true });
+  const context = await browser.newContext();
+  const api = (path, data) => context.request.post(origin + '/api' + path, { headers: { Origin: origin }, data });
+  expect((await api('/auth/register', { name: 'Ana', lastName: 'Eventos', email: `${randomUUID()}@example.test`, password: 'Invictus-Test-2026!' })).status()).toBe(201);
+  const response = await api('/teams', { name: 'Nadadores del Callao' }); expect(response.status()).toBe(201);
+  const team = await response.json();
+  const page = await context.newPage(); await page.setViewportSize({ width: 1440, height: 1000 });
+  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  await page.goto(origin + '/#/mis-eventos');
+  await page.getByRole('button', { name: 'Crear evento +' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('combobox').selectOption(team.id);
+  await page.getByLabel('Título', { exact: true }).fill('Travesía de natación en La Punta');
+  await page.getByLabel('Descripción', { exact: true }).fill('Encuentro organizado por nuestro Team.');
+  await page.getByLabel('Fecha y hora de Lima').fill('2027-09-01T09:00');
+  await page.getByLabel('Lugar', { exact: true }).fill('La Punta, Callao');
+  await mkdir('.local/screenshots', { recursive: true });
+  await page.screenshot({ path: '.local/screenshots/event-team-form.png', fullPage: true });
+  await page.getByRole('button', { name: 'Guardar evento', exact: true }).click();
+  await expect(page.locator('table').getByText('Travesía de natación en La Punta', { exact: true })).toBeVisible();
+  await expect(page.locator('table').getByText(team.name, { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Enviar a revisión', exact: true }).click();
+  await expect(page.locator('table').getByText('En revisión por Invictus', { exact: true })).toBeVisible();
+  await page.screenshot({ path: '.local/screenshots/event-team-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('.mobile-records').getByText(team.name, { exact: true })).toBeVisible();
+  if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)) throw new Error('Overflow móvil');
+  await page.screenshot({ path: '.local/screenshots/event-team-mobile.png', fullPage: true });
+  if (errors.length) throw new Error(errors.join('\n'));
+  console.log('Eventos por Team UI OK: selector, creación, envío a revisión y escritorio/móvil.');
+} finally {
+  await browser?.close(); await vite?.close(); await new Promise(resolve => server.close(resolve)); await db.$disconnect();
+}
