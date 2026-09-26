@@ -6,7 +6,7 @@ import { RegistrationError } from './errors.js';
 // El host aporta openPaymentOperation de @base/pagos-manuales y stores ligados
 // a tx.database. No se abre otra transacción desde los callbacks de pagos.
 export function createRegistrationPaymentAdapter({ commerceStore, readStore, storeForTransaction,
-  openPaymentOperation, profileReader, publicBaseUrl, experimental = false }) {
+  openPaymentOperation, profileReader, publicBaseUrl, experimental = false, onRegistrationResult }) {
   requirePort(commerceStore, ['run'], 'commerceStore');
   if (typeof storeForTransaction !== 'function' || typeof openPaymentOperation !== 'function')
     throw new TypeError('Configura storeForTransaction y openPaymentOperation');
@@ -49,14 +49,18 @@ export function createRegistrationPaymentAdapter({ commerceStore, readStore, sto
       if (!registration || !operation || operation.sourceType !== 'registration' || operation.sourceId !== registration.id
         || operation.payerId !== registration.userId || operation.id !== registration.id)
         throw new RegistrationError('Origen de pago incompatible', 409, 'PAYMENT_SOURCE_CONFLICT');
+      const confirm = async () => {
+        const code = `EV-${crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase()}`;
+        await store.registrations.update(registration.id, { ...registration, status: 'CONFIRMED', participationCode: code,
+          participationQrDataUrl: await QRCode.toDataURL(`${baseUrl}/participacion/${code}`), updatedAt: new Date().toISOString() });
+        await tx.operations.update(operation.id, { acceptingPayments: false, acceptingReviews: false });
+      };
+      if (onRegistrationResult && await onRegistrationResult(tx, result, registration, confirm)) return true;
       if (registration.status !== 'PENDING') throw new RegistrationError('Inscripción no disponible para confirmar', 409, 'INVALID_STATE');
       // Un rechazo monetario no libera cupo ni declara rechazo de participación.
       if (result.status === 'rejected') return true;
       if (result.status !== 'verified') throw new RegistrationError('Resultado desconocido', 400, 'INVALID_INPUT');
-      const code = `EV-${crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase()}`;
-      await store.registrations.update(registration.id, { ...registration, status: 'CONFIRMED', participationCode: code,
-        participationQrDataUrl: await QRCode.toDataURL(`${baseUrl}/participacion/${code}`), updatedAt: new Date().toISOString() });
-      await tx.operations.update(operation.id, { acceptingPayments: false, acceptingReviews: false });
+      await confirm();
       return true;
     }
   };

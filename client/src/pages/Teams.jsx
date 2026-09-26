@@ -5,6 +5,7 @@ import { Modal } from '../components/Modal.jsx';
 import { fileUrl } from '../services/api.js';
 import { saveTeam, addMember, changeMemberRole, removeMember } from '../services/teams.js';
 import '../styles/teams.css';
+import TeamPaymentMethods from '../components/TeamPaymentMethods.jsx';
 
 const roles = { OWNER: 'Propietario', ADMIN: 'Administrador', MEMBER: 'Miembro' };
 function RoleOptions() { return Object.entries(roles).map(([value, label]) => <option key={value} value={value}>{label}</option>); }
@@ -52,6 +53,7 @@ function TeamDetail({ id, user }) {
       </div>
       {editing && <TeamForm team={team} close={() => setEditing(false)} saved={() => { setEditing(false); resource.reload(); }}/ >}
       <Members team={team} user={user} reloadTeam={resource.reload}/>
+      {team.capabilities.edit && <TeamPaymentMethods team={team}/>}
     </>}</State>
   </section>;
 }

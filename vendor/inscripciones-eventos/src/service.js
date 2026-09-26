@@ -2,7 +2,7 @@ import { requirePort, normalizePublicBaseUrl } from '@base/usuarios-acceso/contr
 import QRCode from 'qrcode';
 import { RegistrationError } from './errors.js';
 const STATES=['PENDING','PENDING_REVIEW','CONFIRMED','REJECTED','CANCELLED','COMPLETED'];
-const ACTIVE=['PENDING','PENDING_REVIEW','CONFIRMED'];
+const ACTIVE=['PENDING','PENDING_REVIEW','OBSERVED','CONFIRMED','COMPLETED'];
 const auth=u=>{if(!u)throw new RegistrationError('Autenticación requerida',401,'UNAUTHENTICATED')};
 export function createRegistrationService({store,paymentService,fileService,profileReader,onCreated,authorizeManage,publicBaseUrl='http://127.0.0.1:3210'}={}){
  requirePort(store,['events.get','registrations.create','registrations.get','registrations.update','registrations.list','registrations.findByEventUser'],'store');

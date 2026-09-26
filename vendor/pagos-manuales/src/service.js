@@ -3,11 +3,12 @@ import { AppError } from '@base/usuarios-acceso';
 import { strictInput, recipientAccess, unavailable } from './policy.js';
 
 // No conoce pedidos. El adaptador de origen conserva sus reglas de negocio.
-export function createPaymentService({ store, fileService, resolvePermissions, methods = ['cash', 'yape', 'plin'], onResult = async () => {} }) {
+export function createPaymentService({ store, fileService, resolvePermissions, methods = ['cash', 'yape', 'plin'], onResult = async () => {}, operationPolicy }) {
   if (!methods.length || methods.some(m => !['cash', 'yape', 'plin'].includes(m))) throw new Error('Métodos inválidos');
   async function authorize(tx, user, id, admin) {
     const operation = await tx.operations.find(id);
     if (!operation) throw unavailable();
+    if (operationPolicy && await operationPolicy.authorize(tx, user, operation, admin)) return operation;
     if (admin) await recipientAccess(tx, user, operation.recipientId, 'review', resolvePermissions);
     else if (operation.payerId !== user?.id) throw unavailable();
     return operation;
@@ -37,35 +38,40 @@ export function createPaymentService({ store, fileService, resolvePermissions, m
     },
     async register(user, id, input) {
       strictInput(input, ['method', 'proofFileId']);
-      if (!methods.includes(input.method) || (input.method === 'cash' ? input.proofFileId != null : typeof input.proofFileId !== 'string')) throw new AppError('Método o comprobante inválido', 400, 'INVALID_PAYMENT');
       return store.run(id, async tx => {
         const operation = await authorize(tx, user, id, false);
+        const custom = operationPolicy && await operationPolicy.validateRegister(tx, user, operation, input);
+        if (!custom && (!methods.includes(input.method) || (input.method === 'cash' ? input.proofFileId != null : typeof input.proofFileId !== 'string'))) throw new AppError('Método o comprobante inválido', 400, 'INVALID_PAYMENT');
         if (!operation.acceptingPayments) throw new AppError('La operación está cerrada', 409, 'OPERATION_CLOSED');
-        if ((await tx.payments.list(id)).some(p => p.status !== 'rejected')) throw new AppError('Ya existe un pago pendiente o verificado', 409, 'PAYMENT_EXISTS');
-        if (input.method !== 'cash') {
+        if ((await tx.payments.list(id)).some(p => !['rejected','observed'].includes(p.status))) throw new AppError('Ya existe un pago pendiente o verificado', 409, 'PAYMENT_EXISTS');
+        if (input.proofFileId) {
           const file = await tx.files.lock(input.proofFileId);
           if (!file || file.deletedAt || file.ownerId !== user.id || file.visibility !== 'private') throw new AppError('Selecciona un comprobante privado propio', 400, 'INVALID_PROOF');
           if (await tx.payments.usesFile(file.id)) throw new AppError('El comprobante ya está asociado a un pago', 409, 'PROOF_ALREADY_USED');
         }
-        return tx.payments.create({ id: randomUUID(), operationId: id, method: input.method, status: input.method === 'cash' ? 'pending' : 'pending_review',
+        const payment = await tx.payments.create({ id: randomUUID(), operationId: id, method: input.method, status: input.method === 'cash' ? 'pending' : 'pending_review',
           amountCents: operation.amountCents, currency: operation.currency, proofFileId: input.proofFileId || null, createdAt: new Date(), reviewedAt: null, reviewedBy: null, rejectionReason: null });
+        if (custom) await operationPolicy.registered(tx, user, operation, payment);
+        return payment;
       });
     },
     async review(user, id, paymentId, input) {
       strictInput(input, ['status', 'reason']);
-      if (!['verified', 'rejected'].includes(input.status) || (input.status === 'rejected' && (typeof input.reason !== 'string' || !input.reason.trim() || input.reason.trim().length > 300))) throw new AppError('Indica una decisión y un motivo de rechazo de hasta 300 caracteres', 400, 'INVALID_REVIEW');
+      if (!['verified', 'rejected', 'observed'].includes(input.status) || (input.status !== 'verified' && (typeof input.reason !== 'string' || !input.reason.trim() || input.reason.trim().length > 300))) throw new AppError('Indica una decisión y un motivo de hasta 300 caracteres', 400, 'INVALID_REVIEW');
       return store.run(id, async tx => {
         const operation = await authorize(tx, user, id, true);
+        const custom = operationPolicy && await operationPolicy.validateReview(tx, user, operation, input);
+        if (!custom && input.status === 'observed') throw new AppError('Este pago no admite observaciones', 400, 'INVALID_REVIEW');
         const payment = (await tx.payments.list(id)).find(p => p.id === paymentId);
         if (!payment) throw new AppError('Pago no disponible', 404, 'PAYMENT_NOT_FOUND');
-        if (payment.status === input.status && (input.status !== 'rejected' || payment.rejectionReason === input.reason.trim())) return payment;
+        if (payment.status === input.status && (input.status === 'verified' || payment.rejectionReason === input.reason.trim())) return payment;
         if (!operation.acceptingReviews) throw new AppError('La operación está cerrada', 409, 'OPERATION_CLOSED');
         if (!['pending', 'pending_review'].includes(payment.status)) throw new AppError('Transición de pago no permitida', 409, 'INVALID_PAYMENT_TRANSITION');
         if (payment.proofFileId) {
           const file = await tx.files.lock(payment.proofFileId);
           if (!file || file.deletedAt) throw new AppError('Comprobante no disponible', 409, 'PROOF_UNAVAILABLE');
         }
-        const reviewed = await tx.payments.update(paymentId, { status: input.status, reviewedBy: user.id, reviewedAt: new Date(), rejectionReason: input.status === 'rejected' ? input.reason.trim() : null });
+        const reviewed = await tx.payments.update(paymentId, { status: input.status, reviewedBy: user.id, reviewedAt: new Date(), rejectionReason: input.status !== 'verified' ? input.reason.trim() : null });
         const result = await tx.results.create({ paymentId, operationId: id, sourceType: operation.sourceType, sourceId: operation.sourceId,
           status: reviewed.status, reviewedAt: reviewed.reviewedAt, reviewedBy: user.id, rejectionReason: reviewed.rejectionReason });
         // Solo efectos en la MISMA transacción. Nunca APIs, correos o efectos externos.

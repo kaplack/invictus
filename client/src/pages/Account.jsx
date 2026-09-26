@@ -1,4 +1,7 @@
 import React,{useState,useEffect}from'react';import{api,upload,fileUrl}from'../services/api.js';import{useData,useAction}from'../hooks/data.js';import{Heading,State,Feedback,Field,Textarea,Records,Status,date,money}from'../components/UI.jsx';
+import {Modal} from '../components/Modal.jsx';
+import {RegistrationDetail,RegistrationStatus} from '../components/CategoryRegistration.jsx';
+import {categoryPrice} from '../components/EventSetup.jsx';
 export function Login({onSession,redirect="/cuenta",allowRegister=true}){const[register,setRegister]=useState(false),a=useAction();return <div className="auth-layout"><div><p className="eyebrow">TU HISTORIA EMPIEZA AQUÍ</p><h1>Un lugar para<br/>cada desafío.</h1><p>Inscríbete, encuentra reconocimientos y conserva tu historial.</p></div><form className="card form" onSubmit={e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.currentTarget));a.run(async()=>{const r=await api('/auth/'+(register?'register':'login'),'POST',body);onSession(r.user);location.hash=redirect;},'Sesión iniciada.')}}><h2>{register?'Crea tu cuenta':'Bienvenido de nuevo'}</h2>{register&&<><Field label="Nombre" name="name" required autoComplete="given-name"/><Field label="Apellidos" name="lastName" required autoComplete="family-name"/></>}<Field label="Correo electrónico" name="email" type="email" required autoComplete="email"/><Field label="Contraseña" name="password" type="password" minLength="12" required autoComplete={register?'new-password':'current-password'}/>{register&&<small>Usa al menos 12 caracteres, mayúscula, minúscula, número y símbolo.</small>}<button disabled={a.busy}>{register?'Crear cuenta':'Iniciar sesión'} →</button>{allowRegister&&<button className="link-button" type="button" onClick={()=>setRegister(!register)}>{register?'Ya tengo una cuenta':'Crear una cuenta'}</button>}<Feedback state={a}/></form></div>}
 export function Account({user}) {
   const p=useData('/profile');
@@ -8,8 +11,10 @@ export function Account({user}) {
 }
 export function Registrations() {
   const r=useData('/profile/registrations');
+  const [selected,setSelected]=useState(null);
   return <><Heading eyebrow="MI CUENTA" title="Mis inscripciones"><p>Consulta los eventos en los que participas y el estado de tus inscripciones.</p></Heading>
-    <State resource={r}>{items=>items.length?<Records items={items} columns={[{label:'Evento',render:i=>i.event.title},{label:'Team organizador',render:i=>i.event.team?.name||'—'},{label:'Fecha',render:i=>date(i.event.startsAt)},{label:'Estado',render:i=><Status value={i.status}/>}]}/>:<div className="empty"><p>Aún no te has inscrito en ningún evento.</p><a className="button" href="#/eventos">Explorar eventos</a></div>}</State>
+    <State resource={r}>{items=>items.length?<Records items={items} columns={[{label:'Evento',render:i=>i.event.title},{label:'Team organizador',render:i=>i.event.team?.name||'—'},{label:'Categoría y pago',render:i=><>{i.categorySnapshot?.name||'General'}<p>{categoryPrice({priceCents:i.amountCents||0,currency:i.currency||'PEN'})} · {i.paymentInstructionsSnapshot?.label||'Sin pago'}</p></>},{label:'Fecha',render:i=>date(i.event.startsAt)},{label:'Estado',render:i=><>{i.categoryId?<RegistrationStatus status={i.status}/>:<Status value={i.status}/>}<p>{i.reviewNote}</p></>}]} actions={i=>i.categoryId&&<button className="secondary" onClick={()=>setSelected(i.id)}>{i.status==='OBSERVED'?'Corregir inscripción':'Ver inscripción'}</button>}/>:<div className="empty"><p>Aún no te has inscrito en ningún evento.</p><a className="button" href="#/eventos">Explorar eventos</a></div>}</State>
+    {selected&&<Modal title="Mi inscripción" onClose={()=>setSelected(null)}><RegistrationDetail key={selected} id={selected} changed={r.reload}/></Modal>}
     <p className="muted">Una inscripción confirmada no acredita asistencia, resultados ni logros.</p>
   </>;
 }

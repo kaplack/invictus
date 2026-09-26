@@ -1,6 +1,7 @@
 import {AppError} from '@base/usuarios-acceso';
 import {administrator} from './permissions.js';
 import {z} from 'zod';
+import {saveEventDiscipline,assertEventSetupReady} from './event-setup/service.js';
 import {managedEventWhere,teamSummary,requireTeamManager,lockManagedEvent,assertSameTeam} from './teams/event-access.js';
 export function createPersonalEvents({db,commerce,eventsFor,registrationsFor}) {
   const lock = (database,id) => database.$queryRaw`SELECT id FROM events WHERE id = ${id}::uuid FOR UPDATE`;
@@ -21,7 +22,7 @@ export function createPersonalEvents({db,commerce,eventsFor,registrationsFor}) {
       return rows.map(r=>({id:r.id,status:r.status,participant:users.find(u=>u.id===r.userId)}));
     },
     async save(actor,id,input) {
-      const {maxCapacity,teamId,...data}=input;
+      const {maxCapacity,teamId,disciplineId,...data}=input;
       if(!z.number().int().min(1).max(1000000).safeParse(maxCapacity).success)throw new AppError('Indica un cupo entre 1 y 1000000',400,'INVALID_CAPACITY');
       if('status' in data)throw new AppError('El estado lo determina la revisión de Invictus',403,'FORBIDDEN');
       return commerce.run(null,async tx=>{
@@ -30,8 +31,9 @@ export function createPersonalEvents({db,commerce,eventsFor,registrationsFor}) {
         else await requireTeamManager(database,actor,teamId,true);
         const svc=eventsFor(database,{teamId,createdByUserId:actor.id,source:'EXTERNAL'});
         const event=id?await svc.update(actor,id,data):await svc.create(actor,data);
+        await saveEventDiscipline(database,event,disciplineId);
         await registrationsFor(database).service.configure(actor,event.id,{amountCents:0,currency:'PEN',maxCapacity,paymentRecipientId:null});
-        return event;
+        return {...event,...(disciplineId!==undefined?{disciplineId}:{})};
       });
     },
     async submit(actor,id) {
@@ -41,6 +43,7 @@ export function createPersonalEvents({db,commerce,eventsFor,registrationsFor}) {
         if(event.source!=='EXTERNAL')throw new AppError('Los eventos Invictus se publican desde Gestión',409,'INVICTUS_PUBLICATION');
         if(new Date(event.startsAt)<=new Date())throw new AppError('El evento debe tener una fecha futura',400,'INVALID_DATE');
         if(!await database.eventRegistrationConfig.findUnique({where:{eventId:id}}))throw new AppError('Configura el cupo primero',409,'NOT_CONFIGURED');
+        await assertEventSetupReady(database,event);
         return database.event.update({where:{id},data:{reviewStatus:'PENDING_REVIEW',reviewNote:null}});
       });
     },
@@ -54,6 +57,7 @@ export function createPersonalEvents({db,commerce,eventsFor,registrationsFor}) {
         if(!event)throw new AppError('Evento no encontrado',404,'NOT_FOUND');
         if(event.source!=='EXTERNAL'||event.status!=='DRAFT'||event.reviewStatus!=='PENDING_REVIEW')throw new AppError('El evento no está pendiente de revisión',409,'INVALID_STATE');
         const approved=parsed.decision==='APPROVE';
+        if(approved)await assertEventSetupReady(database,event);
         if(approved&&new Date(event.startsAt)<=new Date())throw new AppError('La fecha del evento ya pasó; solicita una corrección',409,'INVALID_DATE');
         return database.event.update({where:{id},data:{status:approved?'PUBLISHED':'DRAFT',reviewStatus:approved?'APPROVED':'CHANGES_REQUESTED',reviewNote:approved?null:parsed.note}});
       });

@@ -1,8 +1,11 @@
 # Invictus — continuidad
 
-Actualizado: 2026-09-25.
+Actualizado: 2026-09-26.
 
 ## Estado actual
+2026-09-26: etapa 5 cerrada como validación técnica local mínima; 1 caso complementario aprobado y evidencia anterior reutilizada. No se modificó producción ni código de aplicación. Detalle: [validación del piloto](docs/pilot-validation.md).
+2026-09-26: etapa 4 implementada localmente: inscripción por categoría, reserva transaccional de cupos, comprobantes privados, revisión OWNER/ADMIN, observación/corrección, auditoría y listados. Snapshots completan la tarea pendiente de etapa 3. Pruebas mínimas: 1 caso integrado nuevo + 3 regresiones aprobados, build web/admin y recorrido visual móvil/escritorio aprobados. Migración 019 aplicada a invictus e invictus_test locales; cliente Prisma regenerado. Neon no modificado. Detalle: [inscripciones](docs/category-registrations.md).
+2026-09-25: configuración de etapa 3 implementada: disciplinas, categorías y métodos de pago del Team, selección por evento y permisos OWNER/ADMIN. Una categoría por participante/evento confirmada. Migración 018 aplicada solo a invictus e invictus_test locales; 3/3 pruebas backend, build web/admin y recorrido visual 1440/390 px aprobados. Pendientes inscripción por categoría, snapshots y revisión de pagos (etapa 4), además del despliegue en Neon. Ver [configuración de eventos](docs/event-configuration.md).
 2026-09-25: etapa 2 en curso. Implementada la transición de eventos a Team (nuevos obligatorios; históricos opcionales), autorización por membresía, selección de Team y script de reporte/simulación/asignación. Migración 017 aplicada en invictus e invictus_test locales; cliente Prisma regenerado. Pruebas backend 3/3 y recorrido visual de eventos por Team a 1440/390 px aprobados. El reporte local encontró 2 eventos históricos sin Team; no se asignaron automáticamente ni se modificó producción. Detalle: [migración de eventos](docs/event-team-migration.md).
 2026-09-25: Teams y membresías implementados y verificados con API y “Mis Teams”, roles locales, logo/contacto y gestión de miembros. Migración 016 aplicada a invictus e invictus_test locales; cliente Prisma generado. Build web/admin, 3 pruebas de integración y recorrido visual a 1440/390 px aprobados. Producción no modificada. Siguiente incremento: eventos por Team y migración de propiedad; ver [análisis](docs/teams-architecture.md) y [operación de Teams](docs/teams.md).
 2026-09-24: el usuario confirma que Invictus está publicado en Vercel, Render, Neon y AWS S3. Despliegue reportado por el usuario; no verificado en esta revisión.
@@ -10,6 +13,7 @@ Actualizado: 2026-09-25.
 Etapa 1 completada localmente. Solo existía Invictus_Project_Kickoff.docx, conservado. Git inicializado en main. Paquetes seleccionados incorporados como workspaces locales portables; schema compuesto mediante compositor oficial, historial 001–013 conservado más migración propia 014.
 
 ## Decisiones
+- 2026-09-25: el usuario confirma **una sola categoría por participante y evento**. Conservar la unicidad actual `(eventId, userId)` al extender la inscripción; la elección y sus snapshots se implementan en la etapa 4.
 - Alcance actualizado el 2026-09-24: preparar un piloto de eventos organizados por Teams con inscripciones y revisión manual de pagos. Esto sustituye la exclusión previa de inscripciones pagadas; resultados/logros siguen fuera del alcance nuevo.
 - Roles actuales globales: USER, ORGANIZER y ADMIN. Separación acordada para Teams: `User.role` conserva los permisos de plataforma; `TeamMember.role` determina OWNER, ADMIN o MEMBER dentro de cada Team. Crear un Team o cambiar una membresía no cambia `User.role`. Mantener ORGANIZER durante la transición y retirar su uso para autorizar eventos una vez migrados. La adaptación interna actual de ADMIN a SUPERADMIN no debe trasladarse automáticamente a los nuevos permisos de Team.
 - Tienda exclusivamente para existencias físicas. Cotizaciones personalizadas separadas, sin reservar stock ni representar producción.
@@ -33,8 +37,9 @@ Registrado el 2026-09-24. El estado de cada etapa se indica abajo. Priorizar cam
 - [x] Completar el análisis de User, Event, autenticación, permisos, archivos, almacenamiento, frontend y admin. Revisión estática del 2026-09-25 documentada en [docs/teams-architecture.md](docs/teams-architecture.md), con modelos, relaciones, migraciones, pantallas y riesgos. Datos/despliegue reales no verificados.
 - [ ] Revisar `Event.organizerId`, los eventos personales EXTERNAL y su revisión por Invictus. Definir los permisos de moderación del ADMIN global frente a los roles del Team; propuesta inicial: conservar la aprobación de eventos externos.
 - [x] Evaluar reutilización de EventRegistration, EventRegistrationConfig, PaymentRecipient, RecipientMember, PaymentOperation, ManualPayment, PaymentResult y StoredFile. Análisis del 2026-09-25: mantener coordinador/operaciones/intentos; ampliar autorización por Team, tipos de pago y snapshots. Transferencias y observaciones todavía no están soportadas. RecipientMember permanece distinto de TeamMember.
-- [ ] Definir si se permite una o varias categorías por participante/evento; hoy existe unicidad por evento y usuario. Precisar edad de referencia, validación de categorías, reserva/liberación de cupos y tratamiento de inscripciones observadas. Revisar la política actual reserve-until-terminal y la inmutabilidad del cupo.
-- [ ] Definir compatibilidad de los estados actuales de inscripción y de la confirmación automática de inscripciones gratuitas con el nuevo flujo de revisión. No eliminar estados ni funciones históricas sin analizar sus dependencias.
+- [x] Definir cardinalidad: una categoría por participante/evento, confirmada por el usuario el 2026-09-25; conservar unicidad por evento y usuario.
+- [x] Edad cumplida el día del evento (confirmada); validar elegibilidad en servidor. Pendientes/observadas conservan cupo; rechazo lo libera sin reinscripción. Cupo y categoría se mantienen inmutables tras recibir inscripciones.
+- [x] Conservar estados históricos y confirmación automática en eventos sin categorías. Nuevas categorías usan PENDING_REVIEW → CONFIRMED/OBSERVED/REJECTED; OBSERVED permite corrección. Revisión manual de gratuitas adoptada como supuesto comunicado.
 
 #### Etapa 1 — Teams, membresías y permisos
 - [x] Crear Team con nombre, descripción, logo mediante StoredFile, contacto opcional, active y timestamps. Team representa a la organización. No se expone borrado ni cambio de active en esta entrega.
@@ -56,24 +61,30 @@ Evidencia etapa 1 (2026-09-25): `npm run build` aprobado; `node --env-file=.env 
 Evidencia etapa 2 (2026-09-25): `npm run build` aprobado; `node --env-file=.env --test tests/event-teams.test.js tests/integration.test.js` 3/3 aprobadas con PostgreSQL local; `node --env-file=.env scripts/event-team-migration.js` generó reporte de 2 eventos históricos sin Team; `node --env-file=.env scripts/check-event-team-ui.js` aprobado, con selector de Team, creación, envío a revisión y capturas `event-team-*.png` a 1440/390 px sin overflow. Producción no modificada. Falta revisión humana del mapa de históricos y despliegue normal.
 
 #### Etapa 3 — disciplinas, categorías y métodos de pago
-- [ ] Crear catálogo general Discipline y asociarlo a Event; comenzar con natación sin limitar el modelo a ella.
-- [ ] Crear EventCategory propia de cada evento: nombre, descripción y restricciones opcionales de género, edad y modalidad; precio en unidades menores, cupo opcional, estado y timestamps. Evitar categorías globales rígidas y conservar compatibilidad de eventos antiguos.
-- [ ] Configurar métodos de pago del Team: múltiples Yape, Plin, transferencias y efectivo, incluso del mismo tipo. Datos según tipo: etiqueta, titular, teléfono, banco, cuenta, CCI/moneda cuando corresponda, instrucciones y QR opcional mediante archivos existentes.
-- [ ] Permitir seleccionar los métodos habilitados por evento mediante una relación, sin duplicar su configuración. Validar que pertenecen al Team propietario; desactivar métodos usados en lugar de borrar referencias históricas.
-- [ ] Conservar importe, moneda e instrucciones históricas en la inscripción/operación reutilizando los snapshots existentes; cambios posteriores de categoría o cuenta no deben alterar operaciones anteriores.
+- [x] Crear catálogo general Discipline y asociarlo a Event; catálogo inicial con natación, running, ciclismo, triatlón y trekking; disciplina opcional para compatibilidad, obligatoria para publicar eventos con categorías.
+- [x] Crear EventCategory propia de cada evento: nombre, descripción, restricciones opcionales de género, edad y modalidad; precio en unidades menores, cupo opcional, estado y timestamps. API y formulario en “Categorías y pagos”; editable solo en borradores sin inscripciones. La elegibilidad y reserva real por categoría quedan en etapa 4.
+- [x] Configurar métodos de pago del Team: múltiples Yape, Plin, transferencias y efectivo, incluso del mismo tipo. OWNER configura; ADMIN consulta y selecciona en eventos. Campos según tipo, PEN/USD, Yape/Plin solo PEN, QR privado con autorización por Team y protección frente a borrado.
+- [x] Seleccionar métodos por evento sin duplicar configuración. API y claves foráneas compuestas impiden asociar cuentas de otro Team. Solo métodos activos; publicación exige moneda compatible con las categorías de pago. Desactivación en lugar de borrado.
+- [x] Conservar importe, moneda e instrucciones históricas en la inscripción/operación reutilizando los snapshots existentes; cambios posteriores de categoría o cuenta no deben alterar operaciones anteriores.
+
+Evidencia de configuración etapa 3 (2026-09-25): `node --env-file=.env --test tests/event-setup.test.js tests/integration.test.js` 3/3, `npm run build` y `node --env-file=.env scripts/check-event-setup-ui.js` aprobados. Capturas `event-setup-desktop.png` y `event-setup-mobile.png` inspeccionadas, sin overflow horizontal. Prisma y escritura de archivos/capturas requirieron permisos fuera del sandbox por EPERM; selectores de la prueba visual ajustados al formulario. Los eventos con categorías aún no admiten inscripción; conservan visible su configuración pública y aviso de próxima apertura. Eventos anteriores sin categorías conservan flujo gratuito.
 
 #### Etapa 4 — inscripción y revisión manual
-- [ ] Extender la inscripción existente: categoría, precio, datos requeridos, método habilitado y comprobante cuando corresponda; efectivo con comprobante opcional. Validar en backend categoría/evento/Team/método y calcular el importe en servidor.
-- [ ] Reutilizar archivos privados y almacenamiento local/S3 para comprobantes. Autorizar lectura al participante propietario y a OWNER/ADMIN del Team organizador, con acceso temporal y sin URL pública permanente; impedir acceso a otros participantes y miembros sin permisos.
-- [ ] Implementar el flujo propuesto pending → accepted/observed/rejected y observed → pending tras corrección/reenvío, con motivo de observación. Resolver el mapeo/migración de estados existentes antes de cambiar contratos compartidos con pagos, perfiles u otras funciones.
-- [ ] Registrar revisión, usuario revisor, fechas y cambios de estado con auditoría básica. Coordinar resultado de pago e inscripción sin crear dos decisiones contradictorias.
-- [ ] Crear administración de inscripciones por evento: búsqueda, filtros por categoría/estado, participante, método, comprobante, aceptar/observar/rechazar y resumen de cantidades/cupos.
-- [ ] Adaptar “Mis inscripciones”: evento, Team, categoría, importe, método, estado y observación; permitir corregir y reenviar las observadas.
+- [x] Extender la inscripción existente: categoría, precio, datos requeridos, método habilitado y comprobante cuando corresponda; efectivo con comprobante opcional. Validar en backend categoría/evento/Team/método y calcular el importe en servidor.
+- [x] Reutilizar archivos privados y almacenamiento local/S3 para comprobantes. Autorizar lectura al participante propietario y a OWNER/ADMIN del Team organizador, con acceso temporal y sin URL pública permanente; impedir acceso a otros participantes y miembros sin permisos.
+- [x] Implementar el flujo propuesto pending → accepted/observed/rejected y observed → pending tras corrección/reenvío, con motivo de observación. Resolver el mapeo/migración de estados existentes antes de cambiar contratos compartidos con pagos, perfiles u otras funciones.
+- [x] Registrar revisión, usuario revisor, fechas y cambios de estado con auditoría básica. Coordinar resultado de pago e inscripción sin crear dos decisiones contradictorias.
+- [x] Crear administración de inscripciones por evento: búsqueda, filtros por categoría/estado, participante, método, comprobante, aceptar/observar/rechazar y resumen de cantidades/cupos.
+- [x] Adaptar “Mis inscripciones”: evento, Team, categoría, importe, método, estado y observación; permitir corregir y reenviar las observadas.
+
+Evidencia etapa 4 (2026-09-26): backend 4/4, build web/admin y scripts/check-category-registration-ui.js aprobados. Capturas inspeccionadas a 390/1440 px. Edad al día del evento confirmada por el usuario. Revisión de gratuitas por Team adoptada como supuesto comunicado; las observadas conservan cupo y las rechazadas son terminales. Ver docs/category-registrations.md. Prueba manual del usuario y despliegue pendientes.
 
 #### Etapa 5 — validación del piloto y regresiones
-- [ ] Probar aislamiento entre dos Teams, usuarios con distintos roles por Team, revocación de membresía, acceso directo por ID y privacidad de comprobantes.
-- [ ] Probar último OWNER concurrente, último cupo, duplicados/reenvíos, cambios de precio/método e historial de revisión.
-- [ ] Verificar migración con eventos e inscripciones existentes, publicación/revisión de eventos, tienda, productos, pedidos, pagos y perfiles. Validar frontend y admin con un recorrido completo del piloto.
+- [x] Probar aislamiento entre dos Teams, usuarios con distintos roles por Team, revocación de membresía, acceso directo por ID y privacidad de comprobantes.
+- [x] Probar último OWNER concurrente, último cupo, duplicados/reenvíos, cambios de precio/método e historial de revisión.
+- [x] Verificar migración con eventos e inscripciones existentes, publicación/revisión de eventos, tienda, productos, pedidos, pagos y perfiles. Validar frontend y admin con un recorrido completo del piloto.
+
+Evidencia etapa 5 (2026-09-26): validación técnica local mínima completada. Una sola ejecución adicional, tests/pilot-validation.test.js, 1/1 aprobada: roles cruzados entre Teams, cupo global concurrente entre categorías, rechazo que libera cupo y precio inmutable tras inscripción. Se reutilizan pruebas backend, migraciones locales, build y recorrido visual de etapas anteriores; no se repite la batería ni se cambia código de aplicación. Ver [cierre mínimo](docs/pilot-validation.md). Pendientes operativos: prueba manual, despliegue/Neon/S3 y mapa de eventos históricos.
 
 Fuera del alcance nuevo: pasarela o API de Yape/Plin, validación automática de pagos, cronometraje, resultados, rankings, certificados, dorsales, check-in QR, invitaciones complejas, chat, permisos por módulos y notificaciones avanzadas. No retirar funciones existentes relacionadas sin revisar compatibilidad. El dashboard global continúa como tarea independiente; el piloto solo requiere resúmenes operativos sencillos.
 

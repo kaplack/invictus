@@ -20,6 +20,7 @@ export async function assertLiveFiles(database, ids) {
 
 export async function assertFileUnreferenced(db, id) {
   const checks = [
+    ['team', { logoFileId: id }], ['teamPaymentMethod', { qrFileId: id }],
     ['manualPayment', { proofFileId: id }], ['paymentRecipient', { qrFileId: id }], ['paymentOperation', { qrFileId: id }],
     ['shopProduct', { imageFileId: id }], ['eventBenefit', { imageFileId: id }],
     ['event', { OR: [{ primaryImageFileId: id }, { bannerImageFileId: id }, { galleryFileIds: { array_contains: [id] } }] }],

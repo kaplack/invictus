@@ -20,7 +20,7 @@ export function createPrismaEventStore(database) {
     async create(e) { return runCoordinated(database, async tx => { await assertLiveFiles(tx, references(e)); return view(await tx.event.create({ data: { id: e.id, ...data(e), createdAt: e.createdAt ? new Date(e.createdAt) : undefined,
       benefits: { create: benefits(e) } }, include })); }); },
     async update(id, e) { return runCoordinated(database, async tx => { await assertLiveFiles(tx, references(e)); const current=await tx.event.findUnique({where:{id}}); if(current&&['CLOSED','FINISHED','CANCELLED'].includes(current.status))throw new EventError('Evento cerrado',409,'IMMUTABLE_STATE'); if(tx.eventRegistration&&['CANCELLED','FINISHED'].includes(e.status)) {
-      const blocking=e.status==='CANCELLED'?['PENDING','PENDING_REVIEW','CONFIRMED','COMPLETED']:['PENDING','PENDING_REVIEW'];
+      const blocking=e.status==='CANCELLED'?['PENDING','PENDING_REVIEW','OBSERVED','CONFIRMED','COMPLETED']:['PENDING','PENDING_REVIEW','OBSERVED'];
       if(await tx.eventRegistration.count({where:{eventId:id,status:{in:blocking}}}))throw new EventError('Resuelve las inscripciones antes de cerrar este evento',409,'EVENT_HAS_REGISTRATIONS');
     }
     return view(await tx.event.update({ where: { id }, data: { ...data(e),

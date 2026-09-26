@@ -1,4 +1,7 @@
 import {createPersonalEvents} from './personal-events.js';
+import {saveEventDiscipline,assertEventSetupReady} from './event-setup/service.js';
+import {prepareRegistration,onRegistrationResult,categoryPaymentPolicy} from './registrations/policy.js';
+import {createCategoryRegistrations} from './registrations/service.js';
 import { createEventService, createPrismaEventStore } from '@base/gestion-eventos';
 import { createPrismaRegistrationCoordinator } from '@base/inscripciones-eventos';
 import { createProfileService, createPrismaProfileStore } from '@base/perfil-trayectoria';
@@ -13,7 +16,7 @@ import { requireTeamManager, requireEventManager, lockManagedEvent, assertSameTe
 const capacity=z.number().int().min(1).max(1000000);
 export function composeServices({database:db,Prisma,files,config}) {
  const commerce=createPrismaCommerceStore(db);
- const registrationsFor=database=>createPrismaRegistrationCoordinator({database,Prisma,commerceStore:createPrismaCommerceStore(database),openPaymentOperation,publicBaseUrl:config.PUBLIC_WEB_URL,resolvePermissions,policy:'reserve-until-terminal',authorizeManage:requireEventManager,autoConfirmFree:true});
+ const registrationsFor=database=>createPrismaRegistrationCoordinator({database,Prisma,commerceStore:createPrismaCommerceStore(database),openPaymentOperation,publicBaseUrl:config.PUBLIC_WEB_URL,resolvePermissions,policy:'reserve-until-terminal',authorizeManage:requireEventManager,autoConfirmFree:true,prepareRegistration,onRegistrationResult});
  const eventsFor=(database,ownership)=>{
   const store=createPrismaEventStore(database),create=store.events.create;
   store.events.create=async event=>{
@@ -28,11 +31,13 @@ export function composeServices({database:db,Prisma,files,config}) {
  const registrations=registrationsFor(db);
  const profiles=createProfileService({store:createPrismaProfileStore(db),fileService:files,registrationService:registrations.service,canModerate:isAdmin});
  const checkout=createPrismaCheckout({database:db,commerceStore:commerce,createOrderService,openPaymentOperation,recipientId:config.PAYMENT_RECIPIENT_ID,resolvePermissions,policy:'reserve-until-terminal'});
- const payments=createPaymentService({store:commerce,fileService:files,resolvePermissions,methods:config.methods,onResult:registrations.onResult});
+ const paymentsFor=database=>createPaymentService({store:createPrismaCommerceStore(database),fileService:files,resolvePermissions,methods:config.methods,onResult:registrationsFor(database).onResult,operationPolicy:categoryPaymentPolicy});
+ const payments=paymentsFor(db);
+ const categoryRegistrations=createCategoryRegistrations({database:db,commerce,registrationsFor,paymentsFor,files});
  const shop=createStoreService({store:createPrismaStore(db),files,canManage:isAdmin});
  const events={
-  async publicList(){return db.event.findMany({where:{status:'PUBLISHED'},select:{id:true,title:true,description:true,publicSlug:true,startsAt:true,timeZone:true,venue:true,primaryImageFileId:true,team:{select:teamSummary}},orderBy:{startsAt:'asc'},take:100});},
-  async detail(slug){const e=await eventsFor(db).getPublic(slug);return {...e,team:e.teamId?await db.team.findUnique({where:{id:e.teamId},select:teamSummary}):null};},
+  async publicList(){return db.event.findMany({where:{status:'PUBLISHED'},select:{id:true,title:true,description:true,publicSlug:true,startsAt:true,timeZone:true,venue:true,primaryImageFileId:true,team:{select:teamSummary},_count:{select:{categories:true}}},orderBy:{startsAt:'asc'},take:100});},
+  async detail(slug){const e=await eventsFor(db).getPublic(slug);const setup=await db.event.findUnique({where:{id:e.id},select:{discipline:{select:{name:true}},categories:{where:{active:true},orderBy:{createdAt:'asc'},select:{id:true,name:true,description:true,gender:true,minAge:true,maxAge:true,modality:true,priceCents:true,currency:true,capacity:true}},_count:{select:{categories:true}}}});return {...e,...setup,team:e.teamId?await db.team.findUnique({where:{id:e.teamId},select:teamSummary}):null};},
   async list(actor){
    organizer(actor);
    const memberships=await db.teamMember.findMany({where:{userId:actor.id,role:{in:['OWNER','ADMIN']},team:{active:true}},select:{teamId:true}});
@@ -41,7 +46,7 @@ export function composeServices({database:db,Prisma,files,config}) {
    return rows.map(e=>({...e,canManage:e.teamId?ids.includes(e.teamId):isAdmin(actor)||e.organizerId===actor.id}));
   },
   async save(actor,id,input){
-   administrator(actor);const {maxCapacity,teamId,...data}=input;
+   administrator(actor);const {maxCapacity,teamId,disciplineId,...data}=input;
    if(data.status==='PUBLISHED')throw new AppError('Usa la acción Publicar',409,'REVIEW_REQUIRED');
    if(!capacity.safeParse(maxCapacity).success)throw new AppError('Indica un cupo entre 1 y 1000000',400,'INVALID_CAPACITY');
    if(data.status&&!['DRAFT','PUBLISHED','CLOSED'].includes(data.status))throw new AppError('Estado no disponible',400,'INVALID_STATE');
@@ -50,7 +55,8 @@ export function composeServices({database:db,Prisma,files,config}) {
     else await requireTeamManager(tx.database,actor,teamId,true);
     const svc=eventsFor(tx.database,{teamId,createdByUserId:actor.id,source:'INVICTUS'});
     const event=id?await svc.update(actor,id,data):await svc.create(actor,data);
-    await registrationsFor(tx.database).service.configure(actor,event.id,{amountCents:0,currency:'PEN',maxCapacity,paymentRecipientId:null});return event;
+    await saveEventDiscipline(tx.database,event,disciplineId);
+    await registrationsFor(tx.database).service.configure(actor,event.id,{amountCents:0,currency:'PEN',maxCapacity,paymentRecipientId:null});return {...event,...(disciplineId!==undefined?{disciplineId}:{})};
    });
   },
   async managed(actor,id){
@@ -62,18 +68,19 @@ export function composeServices({database:db,Prisma,files,config}) {
   async publish(actor,id){administrator(actor);return commerce.run(null,async tx=>{
    const current=await tx.database.event.findUnique({where:{id}});
    if(current?.source==='EXTERNAL')throw new AppError('Aprueba el evento desde la revisión',409,'REVIEW_REQUIRED');
-   await lockManagedEvent(tx.database,actor,id);
+   const locked=await lockManagedEvent(tx.database,actor,id);
+   await assertEventSetupReady(tx.database,locked);
    if(!await tx.database.eventRegistrationConfig.findUnique({where:{eventId:id}}))throw new AppError('Configura el cupo primero',409,'NOT_CONFIGURED');
    return eventsFor(tx.database).publish(actor,id);
   });},
-  async enroll(actor,id){return commerce.run(null,async tx=>{const coordinated=registrationsFor(tx.database);const r=await coordinated.service.create(actor,id); // Free registration is auto-confirmed, never attendance.
+  async enroll(actor,id,input){if(await db.eventCategory.count({where:{eventId:id}}))return categoryRegistrations.enroll(actor,id,input);return commerce.run(null,async tx=>{const coordinated=registrationsFor(tx.database);const r=await coordinated.service.create(actor,id,input); // Legacy free registration is auto-confirmed, never attendance.
    const ps=createProfileService({store:createPrismaProfileStore(tx.database),fileService:files});const p=await ps.getMine(actor)||await ps.save(actor,{publicName:actor.name,visibility:'PRIVATE'});
    const current=await coordinated.service.getOwn(actor,r.id);if(current.status==='CONFIRMED')await coordinated.service.attachProfile(actor,r.id,p.id);
    return coordinated.service.getOwn(actor,r.id);
   });},
   async attendees(actor,id){const rows=await registrations.service.listManaged(actor,id);const users=await db.user.findMany({where:{id:{in:rows.map(r=>r.userId)}},select:{id:true,name:true,lastName:true,email:true}});return rows.map(r=>({id:r.id,status:r.status,createdAt:r.createdAt,participant:users.find(u=>u.id===r.userId)}));},
-  history:actor=>db.eventRegistration.findMany({where:{userId:actor.id},select:{id:true,status:true,createdAt:true,event:{select:{title:true,startsAt:true,publicSlug:true,team:{select:teamSummary}}}},orderBy:{createdAt:'desc'},take:100})
+  history:actor=>db.eventRegistration.findMany({where:{userId:actor.id},select:{id:true,status:true,createdAt:true,categoryId:true,categorySnapshot:true,amountCents:true,currency:true,reviewNote:true,paymentInstructionsSnapshot:true,event:{select:{title:true,startsAt:true,publicSlug:true,team:{select:teamSummary}}}},orderBy:{createdAt:'desc'},take:100})
  };
  const users={list(actor){administrator(actor);return db.user.findMany({select:{id:true,name:true,lastName:true,email:true,role:true},take:100,orderBy:{createdAt:'desc'}});},async role(actor,id,role){administrator(actor);if(!['USER','ORGANIZER','ADMIN'].includes(role)||id===actor.id)throw new AppError('Cambio de rol no permitido',400,'INVALID_ROLE');return db.user.update({where:{id},data:{role},select:{id:true,role:true}});}};
- return {personalEvents:createPersonalEvents({db,commerce,eventsFor,registrationsFor}),events,profiles,shop,checkout,payments,users,recipients:createRecipientService({store:commerce,fileService:files,resolvePermissions})};
+ return {personalEvents:createPersonalEvents({db,commerce,eventsFor,registrationsFor}),events,categoryRegistrations,profiles,shop,checkout,payments,users,recipients:createRecipientService({store:commerce,fileService:files,resolvePermissions})};
 }

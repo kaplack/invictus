@@ -13,6 +13,9 @@ import { resolvePermissions } from './permissions.js';
 import { createQuoteService } from './quotes.js';
 import { createTeamService } from './teams/service.js';
 import { createTeamRouter } from './teams/routes.js';
+import { createEventSetupService } from './event-setup/service.js';
+import { createEventSetupRouter } from './event-setup/routes.js';
+import { createRegistrationRouter } from './registrations/routes.js';
 export async function createApp({database,Prisma,config}) {
  const app=express();app.disable('x-powered-by');app.set('trust proxy',config.TRUST_PROXY);
  app.use(cors({origin:(origin,done)=>done(null,!origin||config.origins.includes(origin)),credentials:true}));
@@ -25,6 +28,8 @@ export async function createApp({database,Prisma,config}) {
  const files=createFileService({repository:createPrismaFileRepository(database),storage,signingKey:config.FILE_SIGNING_KEY});
  const s=composeServices({database,Prisma,files,config});const quotes=createQuoteService(database);
  app.use('/api/teams',createTeamRouter({service:createTeamService({database,files}),requireAuth:auth.requireAuth}));
+ app.use('/api',createEventSetupRouter({service:createEventSetupService({database,files}),requireAuth:auth.requireAuth}));
+ app.use('/api',createRegistrationRouter({service:s.categoryRegistrations,requireAuth:auth.requireAuth}));
  app.get('/api/health',async(req,res)=>{await database.$queryRaw`SELECT 1`;res.json({status:'ok'});});
  app.use('/api/files',createFileRouter({service:files,requireAuth:auth.requireAuth}));
  app.use('/api/panel',createPanelAccess({resolvePermissions}).router({requireAuth:auth.requireAuth}));
@@ -43,7 +48,7 @@ export async function createApp({database,Prisma,config}) {
  app.patch('/api/events/manage/:id',auth.requireAuth,async(req,res)=>res.json(await s.events.save(req.user,req.params.id,req.body)));
  app.post('/api/events/manage/:id/publish',auth.requireAuth,async(req,res)=>res.json(await s.events.publish(req.user,req.params.id)));
  app.get('/api/events/manage/:id/attendees',auth.requireAuth,async(req,res)=>res.json(await s.events.attendees(req.user,req.params.id)));
- app.post('/api/events/:id/register',auth.requireAuth,async(req,res)=>res.status(201).json(await s.events.enroll(req.user,req.params.id)));
+ app.post('/api/events/:id/register',auth.requireAuth,async(req,res)=>res.status(201).json(await s.events.enroll(req.user,req.params.id,req.body)));
  app.get('/api/profile',auth.requireAuth,async(req,res)=>res.json(await s.profiles.getMine(req.user)));
  app.put('/api/profile',auth.requireAuth,async(req,res)=>res.json(await s.profiles.save(req.user,req.body)));
  app.get('/api/profile/registrations',auth.requireAuth,async(req,res)=>res.json(await s.events.history(req.user)));

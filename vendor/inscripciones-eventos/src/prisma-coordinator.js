@@ -6,40 +6,42 @@ import { RegistrationError } from './errors.js';
 import QRCode from 'qrcode';
 
 export function createPrismaRegistrationCoordinator({ database, Prisma, commerceStore, openPaymentOperation,
-  publicBaseUrl, resolvePermissions, policy, authorizeManage, autoConfirmFree = false }) {
+  publicBaseUrl, resolvePermissions, policy, authorizeManage, autoConfirmFree = false, prepareRegistration, onRegistrationResult }) {
   if (policy !== 'reserve-until-terminal') throw new TypeError('Selecciona policy: reserve-until-terminal');
   requirePort(commerceStore, ['run'], 'commerceStore');
   if (!database.eventRegistrationConfig || !Prisma?.DbNull || typeof openPaymentOperation !== 'function' || typeof resolvePermissions !== 'function')
     throw new TypeError('Configuración de inscripciones incompleta');
   const baseUrl = normalizePublicBaseUrl(publicBaseUrl);
   const auth = user => { if (!user?.id) throw new RegistrationError('Autenticación requerida', 401, 'UNAUTHENTICATED'); };
-  const storeFor = db => createPrismaRegistrationStore(db, { Prisma, coordinated: true, eventReader: {
+  const storeFor = (db, prepared) => createPrismaRegistrationStore(db, { Prisma, coordinated: true, eventReader: {
     async get(id) {
       const event = await db.event.findUnique({ where: { id } });
       if (!event) return null;
       const config = await db.eventRegistrationConfig.findUnique({ where: { eventId: id } });
       if (!config) throw new RegistrationError('Configura las inscripciones del evento', 409, 'REGISTRATION_NOT_CONFIGURED');
-      return { ...event, ...config, id: event.id };
+      return { ...event, ...config, ...prepared?.event, id: event.id };
     }
   } });
   const profilesFor = db => db.participantProfile ? { get: id => db.participantProfile.findUnique({ where: { id } }) } : undefined;
-  const serviceFor = tx => createRegistrationService({ store: storeFor(tx.database), profileReader: profilesFor(tx.database), publicBaseUrl: baseUrl,
+  const serviceFor = (tx, prepared) => createRegistrationService({ store: storeFor(tx.database, prepared), profileReader: profilesFor(tx.database), publicBaseUrl: baseUrl,
     authorizeManage: authorizeManage ? (user, event) => authorizeManage(tx.database, user, event) : undefined,
     async onCreated(registration, event) {
+      if (prepared?.data) registration = await tx.database.eventRegistration.update({ where: { id: registration.id }, data: prepared.data });
       if (event.amountCents === 0) {
-        if (!autoConfirmFree) return registration;
+        if (!autoConfirmFree || prepared?.manualReview) return registration;
         // Explicit host policy, executed only after a valid free enrollment; no impersonated organizer.
         const participationCode = `EV-${crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase()}`;
         return storeFor(tx.database).registrations.update(registration.id, { ...registration, status: 'CONFIRMED', participationCode,
           participationQrDataUrl: await QRCode.toDataURL(`${baseUrl}/participacion/${participationCode}`) });
       }
       const operation = await openPaymentOperation(tx, { id: registration.id, sourceType: 'registration', sourceId: registration.id,
-        payerId: registration.userId, recipientId: event.paymentRecipientId, amountCents: event.amountCents, currency: event.currency });
+        payerId: registration.userId, recipientId: event.paymentRecipientId, amountCents: event.amountCents, currency: event.currency,
+        ...(prepared?.payment || {}) });
       return storeFor(tx.database).registrations.update(registration.id, { ...registration, paymentInstructionsSnapshot: operation.instructions });
     }
   });
   const paymentAdapter = createRegistrationPaymentAdapter({ commerceStore, readStore: storeFor(database),
-    storeForTransaction: tx => storeFor(tx.database), openPaymentOperation, publicBaseUrl: baseUrl, experimental: true });
+    storeForTransaction: tx => storeFor(tx.database), openPaymentOperation, publicBaseUrl: baseUrl, experimental: true, onRegistrationResult });
   const service = {
     async configure(user, eventId, input) {
       auth(user);
@@ -66,19 +68,23 @@ export function createPrismaRegistrationCoordinator({ database, Prisma, commerce
         return tx.database.eventRegistrationConfig.upsert({ where: { eventId }, create: { eventId, ...data }, update: data });
       });
     },
-    async create(user, eventId) {
+    async create(user, eventId, input) {
       auth(user);
       return commerceStore.run(null, async tx => {
         const store = storeFor(tx.database);
         const previous = await store.registrations.findByEventUser(eventId, user.id);
         // Identidad natural: un usuario/evento. No reactiva estados terminales.
-        if (previous) return previous;
-        const event = await store.events.get(eventId);
+        if (previous) {
+          if (input?.categoryId && previous.categoryId !== input.categoryId) throw new RegistrationError('Ya tienes una inscripción en otra categoría', 409, 'DUPLICATE_REGISTRATION');
+          return previous;
+        }
+        const prepared = prepareRegistration ? await prepareRegistration(tx, user, eventId, input) : undefined;
+        const event = await storeFor(tx.database, prepared).events.get(eventId);
         if (event?.maxCapacity !== null && event?.maxCapacity !== undefined) {
-          const count = await tx.database.eventRegistration.count({ where: { eventId, status: { in: ['PENDING','PENDING_REVIEW','CONFIRMED','COMPLETED'] } } });
+          const count = await tx.database.eventRegistration.count({ where: { eventId, status: { in: ['PENDING','PENDING_REVIEW','OBSERVED','CONFIRMED','COMPLETED'] } } });
           if (count >= event.maxCapacity) throw new RegistrationError('Cupo agotado', 409, 'CAPACITY_REACHED');
         }
-        return serviceFor(tx).create(user, eventId);
+        return serviceFor(tx, prepared).create(user, eventId);
       });
     },
     async cancel(user, id) {
