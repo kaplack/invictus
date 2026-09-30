@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Modal } from './Modal.jsx';
-import { State, Feedback, Field, Textarea } from './UI.jsx';
+import { State, Feedback, Field, Textarea, Status } from './UI.jsx';
 import { categoryPrice, paymentTypes } from './EventSetup.jsx';
 import { api, upload, base } from '../services/api.js';
 import { useData, useAction } from '../hooks/data.js';
 
 const labels = { PENDING: 'Pendiente', PENDING_REVIEW: 'Pendiente de revisión del Team', OBSERVED: 'Observada: requiere corrección', CONFIRMED: 'Aceptada', REJECTED: 'Rechazada', CANCELLED: 'Cancelada', COMPLETED: 'Finalizada' };
-export const RegistrationStatus = ({ status }) => <span className="badge">{labels[status] || status}</span>;
+export const RegistrationStatus = ({ status }) => <Status value={status} label={labels[status]}/>;
 const amount = r => categoryPrice({ priceCents: r.amountCents || 0, currency: r.currency || 'PEN' });
 
 function ParticipantFields({ category, participant = {} }) {

@@ -8,13 +8,13 @@ import { api, upload } from '../services/api.js';
 export default function TeamPaymentMethods({ team }) {
   const resource = useData(`/teams/${team.id}/payment-methods`), [editing, setEditing] = useState(null);
   const owner = team.role === 'OWNER';
-  return <section className="team-members"><h2>Métodos de pago</h2><p>Los propietarios configuran las cuentas. Los administradores pueden seleccionarlas en los eventos.</p>
-    {owner && <button onClick={() => setEditing({})}>Añadir método de pago</button>}
+  return <section className="team-members"><h2>Cuentas y medios disponibles</h2><p>Los propietarios configuran las cuentas. Los administradores pueden seleccionarlas en los eventos.</p>
+    {owner && <button onClick={() => setEditing({})}>Añadir método de cobro</button>}
     <State resource={resource}>{items => items.length ? <Records items={items} columns={[
       { label: 'Etiqueta', render: m => m.label }, { label: 'Tipo', render: m => paymentTypes[m.type] },
       { label: 'Cuenta', render: m => <>{m.holderName}<br/>{m.phone || m.accountNumber || m.instructions}</> },
       { label: 'Moneda', render: m => m.currency }, { label: 'Estado', render: m => m.active ? 'Activo' : 'Inactivo' },
-    ]} actions={owner ? m => <button className="secondary" onClick={() => setEditing(m)}>Editar método</button> : undefined}/> : <p>No hay métodos de pago registrados.</p>}</State>
+    ]} actions={owner ? m => <button className="secondary" onClick={() => setEditing(m)}>Editar método</button> : undefined}/> : <p>No hay métodos de cobro registrados.</p>}</State>
     {editing && <MethodForm key={editing.id || 'new'} team={team} method={editing} close={() => setEditing(null)} saved={() => { setEditing(null); resource.reload(); }}/ >}
   </section>;
 }
@@ -22,7 +22,7 @@ export default function TeamPaymentMethods({ team }) {
 function MethodForm({ team, method: m, close, saved }) {
   const action = useAction(), [type, setType] = useState(m.type || 'YAPE'), [qr, setQr] = useState(null);
   const mobile = ['YAPE', 'PLIN'].includes(type);
-  return <Modal title={m.id ? 'Editar método de pago' : 'Nuevo método de pago'} onClose={close} busy={action.busy}>
+  return <Modal title={m.id ? 'Editar método de cobro' : 'Nuevo método de cobro'} onClose={close} busy={action.busy}>
     <form className="form" onSubmit={e => {
       e.preventDefault(); const v = Object.fromEntries(new FormData(e.currentTarget));
       v.type = type; v.active = v.active === 'on'; v.qrFileId = v.removeQr ? null : m.qrFileId || null; delete v.removeQr;

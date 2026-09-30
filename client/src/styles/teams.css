@@ -3,6 +3,11 @@
 .team-identity, .team-summary { display: flex; align-items: center; gap: 1rem; }
 .team-identity img { width: 48px; height: 48px; object-fit: contain; flex-shrink: 0; }
 .team-logo { width: 96px; height: 96px; object-fit: contain; flex-shrink: 0; }
+.team-banner-field { display: grid; gap: .75rem; }
+.team-banner-preview { display: block; width: 100%; aspect-ratio: 16 / 7; object-fit: cover; border-radius: 12px; }
+.team-banner-field > button { justify-self: start; }
+.team-banner-error { margin: 0; color: #b42318; }
+.team-banner-error:empty { display: none; }
 .team-summary { align-items: flex-start; }
 .team-summary > div { min-width: 0; }
 .team-description { white-space: pre-wrap; }
@@ -12,3 +17,5 @@
 .team-members { margin-top: 2.5rem; }
 .team-pagination { margin-top: 1.5rem; align-items: center; }
 @media (max-width: 600px) { .team-summary { flex-direction: column; } }
+.team-sports-field { min-width: 0; border: 1px solid currentColor; border-radius: 10px; padding: 1rem; }
+.team-sports-options { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; margin-top: 1rem; }

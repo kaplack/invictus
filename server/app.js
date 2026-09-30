@@ -25,7 +25,7 @@ export async function createApp({database,Prisma,config}) {
  const authOptions={authService,cookieName:config.NODE_ENV==='production'?'__Host-invictus_session':'invictus_session',cookieOptions};const auth=createAuthMiddleware(authOptions);
  app.use('/api/auth',createAuthRouter({...authOptions,authMiddleware:auth}));
  const storage=config.STORAGE_DRIVER==='s3'?await createS3Storage({bucket:config.S3_BUCKET,region:config.AWS_REGION}):createLocalStorage({directory:config.UPLOAD_DIRECTORY});
- const files=createFileService({repository:createPrismaFileRepository(database),storage,signingKey:config.FILE_SIGNING_KEY});
+ const files=createFileService({repository:createPrismaFileRepository(database),storage,signingKey:config.FILE_SIGNING_KEY,policy:{maxBytes:10*1024*1024}});
  const s=composeServices({database,Prisma,files,config});const quotes=createQuoteService(database);
  app.use('/api/teams',createTeamRouter({service:createTeamService({database,files}),requireAuth:auth.requireAuth}));
  app.use('/api',createEventSetupRouter({service:createEventSetupService({database,files}),requireAuth:auth.requireAuth}));

@@ -1,7 +1,8 @@
 import { api, upload } from './api.js';
 
-export async function saveTeam(team, values, logo) {
+export async function saveTeam(team, values, logo, banner) {
   if (logo) values.logoFileId = (await upload(logo, 'public')).id;
+  if (banner) values.bannerFileId = (await upload(banner, 'public')).id;
   return api('/teams' + (team.id ? '/' + team.id : ''), team.id ? 'PATCH' : 'POST', values);
 }
 export const addMember = (id, values) => api(`/teams/${id}/members`, 'POST', values);

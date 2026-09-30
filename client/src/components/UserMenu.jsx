@@ -1,11 +1,12 @@
 import React, { useEffect, useId, useRef, useState } from "react";
+import { OutlineIcon } from "./OutlineIcon.jsx";
 
 export default function UserMenu({ user, manager, route, onLogout }) {
   const [open, setOpen] = useState(false);
   const root = useRef(null),
     trigger = useRef(null);
   const panelId = useId();
-  const name = user.name?.trim() || "Mi cuenta";
+  const name = user.name?.trim() || "Cuenta";
   useEffect(() => {
     setOpen(false);
   }, [route]);
@@ -39,8 +40,8 @@ export default function UserMenu({ user, manager, route, onLogout }) {
         type="button"
         className="user-menu-trigger"
         ref={trigger}
-        aria-label={`Mi cuenta: ${name}`}
-        title="Mi cuenta"
+        aria-label={`Cuenta: ${name}`}
+        title="Cuenta"
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
@@ -86,42 +87,35 @@ export default function UserMenu({ user, manager, route, onLogout }) {
           }
           onClick={() => setOpen(false)}
         >
-          Mi perfil
+          <OutlineIcon name="user"/> Perfil
         </a>
         <a
           href="#/inscripciones"
           aria-current={route === "/inscripciones" ? "page" : undefined}
           onClick={() => setOpen(false)}
         >
-          Mis inscripciones
-        </a>
-        <a
-          href="#/mis-eventos"
-          aria-current={route === "/mis-eventos" ? "page" : undefined}
-          onClick={() => setOpen(false)}
-        >
-          Mis eventos
+          <OutlineIcon name="calendar"/> Inscripciones
         </a>
         <a
           href="#/mis-teams"
           aria-current={route.startsWith("/mis-teams") ? "page" : undefined}
           onClick={() => setOpen(false)}
         >
-          Mis Teams
+          <OutlineIcon name="users"/> Teams
         </a>
         <a
           href="#/pedidos"
           aria-current={route === "/pedidos" ? "page" : undefined}
           onClick={() => setOpen(false)}
         >
-          Mis pedidos
+          <OutlineIcon name="bag"/> Pedidos
         </a>
         {manager && (
           <a
             href={import.meta.env.VITE_ADMIN_URL || "http://localhost:5175"}
             onClick={() => setOpen(false)}
           >
-            Gestión
+            <OutlineIcon name="settings"/> Gestión
           </a>
         )}
         <div className="user-menu-divider" />
@@ -132,7 +126,7 @@ export default function UserMenu({ user, manager, route, onLogout }) {
             onLogout();
           }}
         >
-          Salir
+          <OutlineIcon name="logout"/> Cerrar sesión
         </button>
       </div>
     </div>

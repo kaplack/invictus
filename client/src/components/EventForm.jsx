@@ -21,7 +21,7 @@ export function EventForm({ event, close, saved, endpoint = '/events/manage' }) 
         await api(endpoint + (event.id ? '/' + event.id : ''), event.id ? 'PATCH' : 'POST', values); saved();
       }, 'Evento guardado.');
     }}>
-      {event.id ? <p><strong>Team organizador:</strong> {event.team?.name || 'Pendiente de asignación'}</p> : <EventTeamField createTeamUrl={teamsUrl}/>}
+      {event.teamId ? <><input type="hidden" name="teamId" value={event.teamId}/><p><strong>Team organizador:</strong> {event.team?.name || 'Pendiente de asignación'}</p></> : <EventTeamField createTeamUrl={teamsUrl}/>}
       <Field label="Título" name="title" defaultValue={event.title} required maxLength="180"/>
       {disciplines.error ? <p role="alert">No se pudo cargar el catálogo de disciplinas.</p> : disciplines.loading ? <p>Cargando disciplinas…</p> : <label>Disciplina<select name="disciplineId" defaultValue={event.disciplineId || ''}><option value="">Sin especificar</option>{event.disciplineId && !disciplines.data.some(d => d.id === event.disciplineId) && <option value={event.disciplineId}>Disciplina inactiva</option>}{disciplines.data.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label>}
       <Textarea label="Descripción" name="description" defaultValue={event.description} required/>

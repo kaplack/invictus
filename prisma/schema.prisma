@@ -14,6 +14,7 @@ model User {
   registrationAudits RegistrationAudit[]
   createdEvents Event[] @relation("EventCreator")
   teamMemberships TeamMember[]
+  teamAdmissions TeamAdmission[]
   shopCartUserRows ShopCart[] @relation("ShopCartUser")
   eventOrganizerRows Event[] @relation("EventOrganizer")
   profileUserRows ParticipantProfile[] @relation("ProfileUser")
@@ -37,7 +38,8 @@ model User {
 }
 model StoredFile {
   teamPaymentQrs TeamPaymentMethod[]
-  teamLogos Team[]
+  teamLogos Team[] @relation("TeamLogo")
+  teamBanners Team[] @relation("TeamBanner")
   shopImageRows ShopProduct[] @relation("ShopImage")
   eventPrimaryRows Event[] @relation("EventPrimary")
   eventBannerRows Event[] @relation("EventBanner")
@@ -239,6 +241,10 @@ enum TeamRole {
 }
 
 model Team {
+  disciplines Discipline[] @relation("TeamSports")
+  discoverable Boolean @default(false)
+  joinPolicy String @default("INVITE") @map("join_policy") @db.VarChar(20)
+  admissions TeamAdmission[]
   paymentMethods TeamPaymentMethod[]
   paymentRecipientId String? @unique @map("payment_recipient_id") @db.Uuid
   paymentRecipient PaymentRecipient? @relation(fields: [paymentRecipientId], references: [id], onDelete: Restrict)
@@ -247,7 +253,9 @@ model Team {
   name String @db.VarChar(120)
   description String @default("") @db.VarChar(2000)
   logoFileId String? @map("logo_file_id") @db.Uuid
-  logo StoredFile? @relation(fields: [logoFileId], references: [id], onDelete: Restrict)
+  logo StoredFile? @relation("TeamLogo", fields: [logoFileId], references: [id], onDelete: Restrict)
+  bannerFileId String? @map("banner_file_id") @db.Uuid
+  banner StoredFile? @relation("TeamBanner", fields: [bannerFileId], references: [id], onDelete: Restrict)
   contactName String? @map("contact_name") @db.VarChar(120)
   phone String? @db.VarChar(40)
   whatsapp String? @db.VarChar(40)
@@ -312,6 +320,7 @@ model Event {
 }
 
 model Discipline {
+  teams Team[] @relation("TeamSports")
   id String @id @default(uuid()) @db.Uuid
   code String @unique @db.VarChar(40)
   name String @db.VarChar(120)
@@ -505,4 +514,17 @@ model QuoteRequest {
  createdAt DateTime @default(now()) @map("created_at")
  @@index([createdAt])
  @@map("quote_requests")
+}
+
+model TeamAdmission {
+  id String @id @default(uuid()) @db.Uuid
+  teamId String @map("team_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  kind String @db.VarChar(20)
+  status String @default("PENDING") @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@unique([teamId, userId])
+  @@map("team_admissions")
 }

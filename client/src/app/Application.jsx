@@ -1,6 +1,6 @@
+import PublicTeams from "../pages/PublicTeams.jsx";
 import MainNavigation from "../components/MainNavigation.jsx";
-import MyEvents from "../pages/MyEvents.jsx";
-import Teams from "../pages/Teams.jsx";
+import Teams from "../pages/TeamSpace.jsx";
 import UserMenu from "../components/UserMenu.jsx";
 import React, { useState, useEffect } from "react";
 import { api } from "../services/api.js";
@@ -65,19 +65,22 @@ export default function Application() {
       </div>
     );
   let page;
-  if (protectedRoute && !user) page = <Login onSession={setUser} />;
+  if (protectedRoute && !user) page = <Login onSession={setUser} redirect={protectedRoute ? route : "/cuenta"} />;
   else if (route === "/") page = <Home />;
+  else if (route === "/teams" || route.startsWith("/teams/")) page = <PublicTeams key={route} id={route.split("/")[2]} />;
   else if (route === "/acceso") page = <Login onSession={setUser} />;
   else if (route === "/eventos" || route.startsWith("/eventos/"))
     page = <Events key={route} slug={route.split("/")[2]} user={user} />;
+  else if (route === "/deportistas")
+    page = <section className="heading"><p className="eyebrow">COMUNIDAD INVICTUS</p><h1>Deportistas</h1><span className="badge">Próximamente</span><p>Estamos preparando este espacio para la comunidad deportiva.</p><a className="button secondary" href="#/eventos">Explorar eventos</a></section>;
   else if (route === "/tienda")
     page = <Shop user={user} cart={cart} setCart={setCart} />;
   else if (route === "/cotizar") page = <Quote />;
   else if (route === "/cuenta" || route === "/perfil")
     page = <Account user={user} />;
   else if (route === "/inscripciones") page = <Registrations />;
-  else if (route === "/mis-eventos") page = <MyEvents user={user} />;
-  else if (route === '/mis-teams' || route.startsWith('/mis-teams/')) page = <Teams id={route.split('/')[2]} user={user}/>;
+  else if (route === "/mis-eventos") page = <Teams user={user} />;
+  else if (route === '/mis-teams' || route.startsWith('/mis-teams/')) page = <Teams id={route.split('/')[2]} user={user} section={route.split('/')[3] || 'inicio'} onLogout={logout} sessionError={error}/>;
   else if (route === "/carrito") page = <Cart cart={cart} setCart={setCart} />;
   else if (route === "/pedidos") page = <Orders />;
   else
@@ -86,8 +89,9 @@ export default function Application() {
         Página no encontrada. <a href="#/">Volver al inicio</a>
       </p>
     );
+  if (user && route.startsWith("/mis-teams/")) return page;
   return (
-    <>
+    <div className={(route === "/mis-teams" || route === "/mis-eventos" || route === "/pedidos" || route === "/inscripciones" || route === "/perfil" || route === "/cuenta" || route === "/acceso" || (protectedRoute && !user) || route === "/" || route === "/teams" || route.startsWith("/teams/") || route === "/eventos" || route.startsWith("/eventos/") || route === "/tienda") ? "landing-shell" : undefined}>
       <a className="skip" href="#main">
         Ir al contenido
       </a>
@@ -179,6 +183,6 @@ export default function Application() {
         <p>Cada evento termina. El esfuerzo permanece.</p>
         <span>Eventos · Comunidad · Reconocimientos</span>
       </footer>
-    </>
+    </div>
   );
 }

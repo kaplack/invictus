@@ -37,9 +37,9 @@ export default function MainNavigation({route}) {
     <nav id={panelId} className={`main-navigation-links${open ? ' is-open' : ''}`} aria-label="Principal" onClick={event => {
       if (event.target.closest('a')) { setOpen(false); if (window.matchMedia('(max-width: 1100px)').matches) trigger.current?.focus(); }
     }}>
+      <a href="#/teams" aria-current={(route === "/teams" || route.startsWith("/teams/")) ? "page" : undefined}>Teams</a>
       <a href="#/eventos" aria-current={route.startsWith('/eventos') ? 'page' : undefined}>Eventos</a>
-      <a href="#/tienda" aria-current={route === '/tienda' ? 'page' : undefined}>Reconocimientos</a>
-      <a href="#/cotizar" aria-current={route === '/cotizar' ? 'page' : undefined}>A medida</a>
+      <a href="#/tienda" aria-current={route === "/tienda" ? "page" : undefined}>Tienda</a>
     </nav>
   </div>;
 }

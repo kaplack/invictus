@@ -1,5 +1,5 @@
 import express from 'express';
-import { pipeline } from 'node:stream/promises';
+import { sendFileStream } from './send-stream.js';
 import { AppError } from '@base/usuarios-acceso';
 export function createFileRouter({ service, requireAuth }) {
   const router = express.Router();
@@ -9,7 +9,7 @@ export function createFileRouter({ service, requireAuth }) {
       'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer',
       'Content-Security-Policy': "default-src 'none'; sandbox",
       'Content-Disposition': `${file.contentType.startsWith('image/') ? 'inline' : 'attachment'}; filename="file"; filename*=UTF-8''${encodeURIComponent(file.name).replace(/['()*]/g, c => '%' + c.charCodeAt(0).toString(16))}` });
-    await pipeline(stream, res);
+    await sendFileStream(stream, res);
   }
   router.get('/:id/public', (req, res) => content(req, res, true));
   router.use(requireAuth);

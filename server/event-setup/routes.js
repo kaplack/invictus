@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { pipeline } from 'node:stream/promises';
+import { sendFileStream } from '@base/archivos-imagenes';
 
 export function createEventSetupRouter({ service, requireAuth }) {
   const router = Router();
@@ -16,7 +16,7 @@ export function createEventSetupRouter({ service, requireAuth }) {
     const { file, stream } = await service.qr(req.user, req.params.id, req.params.methodId);
     res.set({ 'Content-Type': file.contentType, 'Content-Length': String(file.size), 'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; sandbox", 'Referrer-Policy': 'no-referrer' });
-    await pipeline(stream, res);
+    await sendFileStream(stream, res);
   });
   return router;
 }
