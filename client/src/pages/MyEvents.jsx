@@ -25,7 +25,7 @@ export default function MyEvents({ team }) {
     </div>;
   }
   return <section className="team-events">
-    <div className="team-events-header"><Heading eyebrow={team?.name || 'TEAMS'} title="Eventos"><p>Organiza los eventos de tu equipo y consulta su estado.</p></Heading><button onClick={() => setEditing(team ? { teamId: team.id, team } : {})}>Crear evento +</button></div>
+    <div className="team-events-header"><Heading title="Eventos"><p>Organiza los eventos de tu equipo y consulta su estado.</p></Heading><button onClick={() => setEditing(team ? { teamId: team.id, team } : {})}>Crear evento +</button></div>
     <p className="muted">Guarda un borrador, completa sus datos y envíalo a revisión. Invictus revisará el evento antes de publicarlo.</p>
     <Feedback state={action}/>
     {setup && <EventSetup event={setup} close={() => setSetup(null)}/>}

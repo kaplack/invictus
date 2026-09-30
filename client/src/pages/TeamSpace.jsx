@@ -25,9 +25,9 @@ export default function Teams({
   id,
   user,
   section = 'inicio',
-  onLogout, sessionError
+  onLogout, sessionError, tab
 }) {
-  return id ? <Console key={id} id={id} user={user} section={section} onLogout={onLogout} sessionError={sessionError} /> : <Directory />;
+  return id ? <Console key={id} id={id} user={user} section={section} tab={tab} onLogout={onLogout} sessionError={sessionError} /> : <Directory />;
 }
 function Pagination({
   offset,
@@ -79,7 +79,7 @@ function Directory() {
             setOffset(0);
           }}>Explorar Teams</button>}</div>}{(offset > 0 || data.nextOffset !== null) && <Pagination offset={offset} next={data.nextOffset} onChange={setOffset} />}</>}</State></section></section>;
 }
-function Console({ id, user, section, onLogout, sessionError }) {
+function Console({ id, user, section, onLogout, sessionError, tab }) {
   const resource = useData(`/teams/${id}`);
   return <><a className="skip" href="#main" onClick={e => {
       e.preventDefault();
@@ -87,7 +87,7 @@ function Console({ id, user, section, onLogout, sessionError }) {
     }}>Ir al contenido</a>{resource.error && <a className="button secondary" href="#/mis-teams">Volver a Teams</a>}<State resource={resource}>{team => {
         const links = [['inicio', 'Inicio'], ['comunicados', 'Comunicados'], ['eventos', 'Eventos'], ['miembros', 'Miembros'], ...(team.capabilities.edit ? [['cobros', 'Métodos de cobro'], ['configuracion', 'Configuración']] : [])];
         return <TeamWorkspaceShell team={team} user={user} section={section} onLogout={onLogout} sessionError={sessionError}>{!team.active && <p className="error">Este Team está inactivo. Las herramientas de gestión no están disponibles.</p>}
- {!links.some(([key]) => key === section) ? <div className="empty">Esta sección no está disponible con tus permisos. <a className="text-link" href={`#/mis-teams/${id}`}>Volver a Inicio</a></div> : section === 'inicio' ? <TeamHome team={team} user={user}/> : section === 'comunicados' ? <><Heading eyebrow={team.name} title="Comunicados" /><div className="empty"><span className="badge">Próximamente</span><h2>Las novedades del equipo, en un solo lugar.</h2><p>Aquí podrás consultar los comunicados de {team.name}.</p></div></> : section === 'eventos' ? team.capabilities.edit ? <MyEvents team={team} /> : <MemberEvents team={team} /> : section === 'miembros' ? <><Members team={team} user={user} reloadTeam={resource.reload} />{team.capabilities.members && <Requests team={team} reload={resource.reload} />}</> : section === 'cobros' ? <><Heading eyebrow={team.name} title="Métodos de cobro"><a className="text-link" href={`#/mis-teams/${team.id}/configuracion`}>Volver a Configuración</a></Heading><TeamPaymentMethods team={team} /></> : <Settings team={team} reload={resource.reload} />}
+ {!links.some(([key]) => key === section) ? <div className="empty">Esta sección no está disponible con tus permisos. <a className="text-link" href={`#/mis-teams/${id}`}>Volver a Inicio</a></div> : section === 'inicio' ? <TeamHome team={team} user={user}/> : section === 'comunicados' ? <><Heading title="Comunicados" /><div className="empty"><span className="badge">Próximamente</span><h2>Las novedades del equipo, en un solo lugar.</h2><p>Aquí podrás consultar los comunicados de {team.name}.</p></div></> : section === 'eventos' ? team.capabilities.edit ? <MyEvents team={team} /> : <MemberEvents team={team} /> : section === 'miembros' ? <MembersPage team={team} user={user} reload={resource.reload} tab={tab}/> : <Settings team={team} reload={resource.reload} tab={section === 'cobros' ? 'cobros' : tab}/> }
  </TeamWorkspaceShell>;
       }}</State></>;
 }
@@ -95,26 +95,27 @@ function MemberEvents({
   team
 }) {
   const resource = useData(`/teams/${team.id}/events`);
-  return <><Heading eyebrow={team.name} title="Eventos"><p>Eventos publicados por el equipo.</p></Heading><State resource={resource}>{items => items.length ? <div className="team-grid">{items.map(e => <article className="card" key={e.id}><h2>{e.title}</h2><a className="button secondary" href={`#/eventos/${e.publicSlug}`}>Ver evento</a></article>)}</div> : <p className="empty">El equipo todavía no tiene eventos publicados.</p>}</State></>;
+  return <><Heading title="Eventos"><p>Eventos publicados por el equipo.</p></Heading><State resource={resource}>{items => items.length ? <div className="team-grid">{items.map(e => <article className="card" key={e.id}><h2>{e.title}</h2><a className="button secondary" href={`#/eventos/${e.publicSlug}`}>Ver evento</a></article>)}</div> : <p className="empty">El equipo todavía no tiene eventos publicados.</p>}</State></>;
 }
 function Settings({
   team,
-  reload
+  reload, tab
 }) {
+  const current = ['acceso', 'cobros'].includes(tab) ? tab : 'perfil';
   const [editing, setEditing] = useState(false),
     action = useAction();
-  return <section className="team-settings"><Heading eyebrow={team.name} title="Configuración"><p>Define la identidad, el acceso y los medios de cobro de tu equipo.</p></Heading>
-    <div className="team-settings-grid"><section className="card team-profile-panel"><div className="team-panel-heading"><h2>Perfil del Team</h2><button className="secondary" onClick={() => setEditing(true)}>Editar Team</button></div>
+  return <section className="team-settings"><Heading title="Configuración"><p>Define la identidad, el acceso y los medios de cobro de tu equipo.</p></Heading>
+    <SectionLinks label="Configuración" items={[['perfil','Perfil'],['acceso','Acceso'],['cobros','Métodos de cobro']]} current={current} root={`#/mis-teams/${team.id}/configuracion`}/>{current === 'cobros' && <TeamPaymentMethods team={team}/>}
+    {current === 'perfil' && <div className="team-settings-grid"><section className="card team-profile-panel"><div className="team-panel-heading"><h2>Perfil del Team</h2><button className="secondary" onClick={() => setEditing(true)}>Editar Team</button></div>
       <div className="team-settings-identity">{team.logoFileId ? <img src={fileUrl(team.logoFileId)} alt="Logo del Team"/> : <span className="workspace-monogram" aria-hidden="true">{team.name.slice(0,1)}</span>}<div><h3>{team.name}</h3><p className="muted">{team.disciplines?.map(item => item.name).join(' · ') || 'Sin deportes seleccionados'}</p></div></div>
       <p className="team-description">{team.description || 'Agrega una descripción para presentar al equipo.'}</p>
       <dl className="team-settings-details"><div><dt>Banner público</dt><dd>{team.bannerFileId ? 'Configurado · Puedes revisarlo en Editar Team' : 'Sin banner'}</dd></div><div><dt>Persona de contacto</dt><dd>{team.contactName || 'Sin registrar'}</dd></div><div><dt>Correo de contacto</dt><dd>{team.email || 'Sin registrar'}</dd></div><div><dt>Teléfono / WhatsApp</dt><dd>{[team.phone, team.whatsapp].filter(Boolean).join(' / ') || 'Sin registrar'}</dd></div></dl>
       <small>Los datos de contacto permanecen dentro del equipo.</small>
-    </section><div className="team-settings-side"><section className="card"><h2>Métodos de cobro</h2><p>Configura los medios disponibles para cobrar las inscripciones de tus eventos.</p><p className="muted">{team.role === 'OWNER' ? 'Como propietario, puedes crear y editar los métodos.' : 'Puedes consultarlos y seleccionarlos al configurar eventos. Solo los propietarios pueden modificarlos.'}</p><a className="button secondary" href={`#/mis-teams/${team.id}/cobros`}>Métodos de cobro →</a></section>
-    <section className="card"><h2>Roles y permisos</h2><p>Propietarios: administran miembros, acceso, cobros, perfil y eventos.</p><p>Administradores: editan el perfil y gestionan eventos.</p><p>Miembros: consultan el equipo y sus eventos publicados.</p><a className="text-link" href={`#/mis-teams/${team.id}/miembros`}>{team.capabilities.members ? 'Gestionar miembros y roles →' : 'Ver miembros →'}</a></section></div></div>
+    </section><div className="team-settings-side"><section className="card"><h2>Roles y permisos</h2><p>Propietarios: administran miembros, acceso, cobros, perfil y eventos.</p><p>Administradores: editan el perfil y gestionan eventos.</p><p>Miembros: consultan el equipo y sus eventos publicados.</p><a className="text-link" href={`#/mis-teams/${team.id}/miembros`}>{team.capabilities.members ? 'Gestionar miembros y roles →' : 'Ver miembros →'}</a></section></div></div>}
     {editing && <TeamForm team={team} close={() => setEditing(false)} saved={() => {
       setEditing(false);
       reload();
-    }} />}{team.role === 'OWNER' && <form className="card form team-access" onSubmit={e => {
+    }} />}{current === 'acceso' && team.role === 'OWNER' && <form className="card form team-access" onSubmit={e => {
       e.preventDefault();
       const data = new FormData(e.currentTarget);
       action.run(async () => {
@@ -124,14 +125,10 @@ function Settings({
         });
         reload();
       }, 'Acceso actualizado.');
-    }}><h2>Acceso al equipo</h2><label>Modalidad de ingreso<select name="joinPolicy" defaultValue={team.joinPolicy} disabled={action.busy}>{Object.entries(policies).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><p className="muted">Abierto: ingreso inmediato. Por aprobación: un propietario revisa la solicitud. Por invitación: la persona debe recibir y aceptar una invitación.</p><label className="check"><input type="checkbox" name="discoverable" defaultChecked={team.discoverable} disabled={action.busy} />Mostrar en Explorar Teams</label><small>Se mostrarán el nombre, logo, descripción y modalidad de ingreso. Los datos de contacto y la gestión permanecen dentro del equipo.</small><button disabled={action.busy}>{action.busy ? 'Guardando…' : 'Guardar acceso'}</button><Feedback state={action} /></form>}{team.role !== 'OWNER' && <section className="card team-access"><h2>Acceso al equipo</h2><p>{policies[team.joinPolicy]} · {team.discoverable ? 'Visible en Explorar Teams' : 'No aparece en Explorar Teams'}</p><p className="muted">Solo los propietarios pueden modificar estas opciones.</p></section>}</section>;
+    }}><h2>Acceso al equipo</h2><label>Modalidad de ingreso<select name="joinPolicy" defaultValue={team.joinPolicy} disabled={action.busy}>{Object.entries(policies).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><p className="muted">Abierto: ingreso inmediato. Por aprobación: un propietario revisa la solicitud. Por invitación: la persona debe recibir y aceptar una invitación.</p><label className="check"><input type="checkbox" name="discoverable" defaultChecked={team.discoverable} disabled={action.busy} />Mostrar en Explorar Teams</label><small>Se mostrarán el nombre, logo, descripción y modalidad de ingreso. Los datos de contacto y la gestión permanecen dentro del equipo.</small><button disabled={action.busy}>{action.busy ? 'Guardando…' : 'Guardar acceso'}</button><Feedback state={action} /></form>}{current === 'acceso' && team.role !== 'OWNER' && <section className="card team-access"><h2>Acceso al equipo</h2><p>{policies[team.joinPolicy]} · {team.discoverable ? 'Visible en Explorar Teams' : 'No aparece en Explorar Teams'}</p><p className="muted">Solo los propietarios pueden modificar estas opciones.</p></section>}</section>;
 }
-function Requests({
-  team,
-  reload
-}) {
-  const resource = useData(`/teams/${team.id}/requests`),
-    action = useAction();
+function Requests({ team, reload, resource }) {
+  const action = useAction();
   return <section className="card team-requests"><h2>Solicitudes de ingreso</h2><p className="muted">Decide quién se incorpora al equipo. Las invitaciones se aceptan desde la cuenta de cada persona.</p><Feedback state={action} /><State resource={resource}>{items => items.length ? items.map(i => <div className="card team-invitation" key={i.id}><strong>{i.user.name} {i.user.lastName}</strong><div className="actions">{[true, false].map(accept => <button key={String(accept)} className="secondary" disabled={action.busy} onClick={() => action.run(async () => {
             await api(`/teams/${team.id}/admissions/${i.id}`, 'POST', {
               accept
@@ -139,4 +136,19 @@ function Requests({
             resource.reload();
             reload();
           }, accept ? 'Miembro incorporado.' : 'Solicitud rechazada.')}>{accept ? 'Aprobar' : 'Rechazar'}</button>)}</div></div>) : <p className="muted">No hay solicitudes pendientes.</p>}</State></section>;
+}
+
+function SectionLinks({label,items,current,root}) {
+  return <nav className="team-section-links" aria-label={label}>{items.map(([key,text]) => <a key={key} href={root+'/'+key} aria-current={current === key ? 'page' : undefined}>{text}</a>)}</nav>;
+}
+function MembersPage({team,user,reload,tab}) {
+  return team.capabilities.members ? <ManagedMembers team={team} user={user} reload={reload} tab={tab}/> : <Members team={team} user={user} reloadTeam={reload}/>;
+}
+function ManagedMembers({team,user,reload,tab}) {
+  const requests = useData('/teams/'+team.id+'/requests');
+  const current = tab === 'solicitudes' ? tab : 'integrantes';
+  return <Members team={team} user={user} reloadTeam={reload} showList={current === 'integrantes'}>
+    <SectionLinks label="Miembros" items={[['integrantes','Integrantes'],['solicitudes','Solicitudes'+(!requests.loading && !requests.error ? ' ('+requests.data.length+')' : '')]]} current={current} root={'#/mis-teams/'+team.id+'/miembros'}/>
+    {current === 'solicitudes' && <Requests team={team} reload={reload} resource={requests}/>}
+  </Members>;
 }

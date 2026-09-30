@@ -92,13 +92,14 @@ export function TeamForm({ team, close, saved }) {
   </Modal>;
 }
 
-export function Members({ team, user, reloadTeam }) {
+export function Members({ team, user, reloadTeam, children, showList = true }) {
   const [offset, setOffset] = useState(0), [adding, setAdding] = useState(false), [editing, setEditing] = useState(null);
   const resource = useData(`/teams/${team.id}/members?offset=${offset}`), action = useAction();
   function refresh() { resource.reload(); reloadTeam(); }
-  return <section className="team-members team-members-page"><div className="team-members-heading"><Heading eyebrow={team.name} title="Miembros"><p>Consulta las personas que forman parte del equipo y sus roles.</p></Heading>{team.capabilities.members && <button onClick={() => setAdding(true)}>Invitar miembro</button>}</div><p className="muted">Solo los propietarios pueden invitar, cambiar roles y quitar miembros.</p>
+  return <section className="team-members team-members-page"><div className="team-members-heading"><Heading title="Miembros"><p>Consulta las personas que forman parte del equipo y sus roles.</p></Heading>{team.capabilities.members && <button onClick={() => setAdding(true)}>Invitar miembro</button>}</div><p className="muted">Solo los propietarios pueden invitar, cambiar roles y quitar miembros.</p>
     <Feedback state={action}/>
-    <State resource={resource}>{data => <div className="card team-member-list"><div className="team-panel-heading"><h2>Integrantes del equipo</h2><small>{data.items.length} {data.items.length === 1 ? 'persona en esta página' : 'personas en esta página'}</small></div>
+    {children}
+    {showList && <State resource={resource}>{data => <div className="card team-member-list"><div className="team-panel-heading"><h2>Integrantes del equipo</h2><small>{data.items.length} {data.items.length === 1 ? 'persona en esta página' : 'personas en esta página'}</small></div>
       <Records items={data.items} columns={[
         { label: 'Nombre', render: member => <div className="team-member-identity"><span className="workspace-monogram" aria-hidden="true">{member.user.name?.slice(0,1) || '?'}</span><strong>{member.user.name} {member.user.lastName}{member.userId === user.id && <small> (tú)</small>}</strong></div> },
         { label: 'Rol', render: member => <span className="badge team-role" data-role={member.role}>{roles[member.role]}</span> },
@@ -113,7 +114,7 @@ export function Members({ team, user, reloadTeam }) {
         }}>Quitar</button>
       </> : undefined}/>
       {(offset > 0 || data.nextOffset !== null) && <Pagination offset={offset} next={data.nextOffset} setOffset={setOffset}/>}
-    </div>}</State>
+    </div>}</State>}
     {(adding || editing) && <MemberForm team={team} member={editing} close={() => { setAdding(false); setEditing(null); }} saved={() => { setAdding(false); setEditing(null); refresh(); }}/ >}
   </section>;
 }

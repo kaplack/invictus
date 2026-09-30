@@ -99,6 +99,7 @@ try {
     name: 'Configuración',
     exact: true
   }).click();
+  await page.getByRole('link', { name: 'Acceso', exact: true }).click();
   await page.getByLabel('Modalidad de ingreso').selectOption('APPROVAL');
   await page.getByLabel('Mostrar en Explorar Teams').check();
   await page.getByRole('button', {
@@ -115,7 +116,7 @@ try {
   })).toBeVisible();
   await page.locator('.workspace-desktop-tools .workspace-switcher-trigger').click();
   await page.locator('.workspace-desktop-tools .workspace-switcher-panel').getByRole('link', { name: second.name }).click();
-  await expect(page.locator('.team-context')).toContainText('Invictus Club');
+  await expect(page.locator('.workspace-desktop-tools .workspace-switcher-trigger')).toContainText('Invictus Club');
   await page.locator('.workspace-desktop-tools .workspace-switcher-trigger').click();
   await page.locator('.workspace-desktop-tools .workspace-switcher-panel').getByRole('link', { name: team.name }).click();
   await expect(page.getByRole('heading', { name: 'Comunicados', exact: true })).toBeVisible();
@@ -127,11 +128,8 @@ try {
   await expect(page.locator('input[name="teamId"]')).toHaveValue(team.id);
   await page.keyboard.press('Escape');
   await page.getByRole('link', { name: 'Configuración', exact: true }).click();
-  await page.getByRole('link', { name: 'Métodos de cobro →', exact: true }).click();
-  await page.getByRole('heading', {
-    name: 'Métodos de cobro',
-    exact: true
-  }).waitFor();
+  await page.getByRole('link', { name: 'Métodos de cobro', exact: true }).click();
+  await page.getByRole('heading', { name: 'Cuentas y medios disponibles', exact: true }).waitFor();
   await mkdir('.local/screenshots', {
     recursive: true
   });

@@ -80,7 +80,7 @@ export default function Application() {
     page = <Account user={user} />;
   else if (route === "/inscripciones") page = <Registrations />;
   else if (route === "/mis-eventos") page = <Teams user={user} />;
-  else if (route === '/mis-teams' || route.startsWith('/mis-teams/')) page = <Teams id={route.split('/')[2]} user={user} section={route.split('/')[3] || 'inicio'} onLogout={logout} sessionError={error}/>;
+  else if (route === '/mis-teams' || route.startsWith('/mis-teams/')) page = <Teams id={route.split('/')[2]} user={user} section={route.split('/')[3] || 'inicio'} tab={route.split('/')[4]} onLogout={logout} sessionError={error}/>;
   else if (route === "/carrito") page = <Cart cart={cart} setCart={setCart} />;
   else if (route === "/pedidos") page = <Orders />;
   else
