@@ -1,3 +1,4 @@
+import { userLabel } from '../helpers/user.js';
 import React, { useEffect, useId, useRef, useState } from "react";
 import { OutlineIcon } from "./OutlineIcon.jsx";
 
@@ -6,7 +7,7 @@ export default function UserMenu({ user, manager, route, onLogout }) {
   const root = useRef(null),
     trigger = useRef(null);
   const panelId = useId();
-  const name = user.name?.trim() || "Cuenta";
+  const name = userLabel(user);
   useEffect(() => {
     setOpen(false);
   }, [route]);

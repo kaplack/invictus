@@ -28,8 +28,7 @@ const memberSelect = {
   joinedAt: true,
   user: {
     select: {
-      name: true,
-      lastName: true
+      username: true, name: true, lastName: true
     }
   }
 };
@@ -343,8 +342,7 @@ export function createTeamService({
           id: true,
           user: {
             select: {
-              name: true,
-              lastName: true
+              username: true, name: true, lastName: true
             }
           }
         },

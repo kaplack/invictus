@@ -20,7 +20,7 @@ try {
   browser = await chromium.launch({ channel: 'msedge', headless: true });
   const context = await browser.newContext();
   const api = (path, data) => context.request.post(origin + '/api' + path, { headers: { Origin: origin }, data });
-  expect((await api('/auth/register', { name: 'Ana', lastName: 'Eventos', email: `${randomUUID()}@example.test`, password: 'Invictus-Test-2026!' })).status()).toBe(201);
+  expect((await api('/auth/register', { username: 'test_' + randomUUID().replaceAll('-', '').slice(0,24), email: `${randomUUID()}@example.test`, password: 'Invictus-Test-2026!' })).status()).toBe(201);
   const response = await api('/teams', { name: 'Nadadores del Callao' }); expect(response.status()).toBe(201);
   const team = await response.json();
   const page = await context.newPage(); await page.setViewportSize({ width: 1440, height: 1000 });

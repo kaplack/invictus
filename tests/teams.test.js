@@ -16,7 +16,7 @@ test.after(() => db.$disconnect());
 const send = (agent, method, path, body = {}) => agent[method]('/api' + path).set('Origin', origin).send(body);
 async function account() {
   const agent = request.agent(app);
-  const result = await send(agent, 'post', '/auth/register', { name: 'Team', lastName: 'Prueba', email: `teams-${randomUUID()}@example.test`, password: 'Invictus-Test-2026!' }).expect(201);
+  const result = await send(agent, 'post', '/auth/register', { username: 'test_' + randomUUID().replaceAll('-', '').slice(0,24), email: `teams-${randomUUID()}@example.test`, password: 'Invictus-Test-2026!' }).expect(201);
   return { agent, user: result.body.user };
 }
 

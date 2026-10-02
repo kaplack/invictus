@@ -1,3 +1,4 @@
+import { userLabel } from '../helpers/user.js';
 import React, { useState } from 'react';
 import { Modal } from './Modal.jsx';
 import { State, Feedback, Field, Textarea, Status } from './UI.jsx';
@@ -60,7 +61,7 @@ export function RegistrationDetail({ id, manager = false, changed = () => {} }) 
   return <><State resource={r}>{data => <>
     <h3>{data.event.title} · {data.categorySnapshot.name}</h3><p>Organiza: {data.event.team?.name}</p>
     <RegistrationStatus status={data.status}/><p><strong>{amount(data)}</strong> · {data.paymentInstructionsSnapshot?.label || 'Sin pago'}</p>
-    <p>{data.participantSnapshot.name} {data.participantSnapshot.lastName} · {data.participantSnapshot.email}</p>
+    <p>{userLabel(data.participantSnapshot)} · {data.participantSnapshot.email}</p>
     <p>{data.participantSnapshot.birthDate ? `Nacimiento: ${data.participantSnapshot.birthDate} · ` : ''}{data.participantSnapshot.gender === 'FEMALE' ? 'Femenino' : data.participantSnapshot.gender === 'MALE' ? 'Masculino' : ''}{data.participantSnapshot.phone ? ` · ${data.participantSnapshot.phone}` : ''}</p>
     {data.reviewNote && <p className="callout"><strong>Motivo del Team:</strong> {data.reviewNote}</p>}
     <PaymentInstructions method={data.paymentInstructionsSnapshot} qrPath={`/registrations/${id}/qr`}/>
@@ -81,6 +82,6 @@ export function RegistrationDetail({ id, manager = false, changed = () => {} }) 
       <Textarea label="Motivo" name="note" required={decision !== 'CONFIRMED'} maxLength={300} disabled={a.busy}/>
       <p>{decision === 'OBSERVED' ? 'Se conserva el cupo mientras el participante corrige.' : decision === 'REJECTED' ? 'Se libera el cupo. Esta inscripción no podrá reactivarse.' : 'Confirma que revisaste los datos y, si corresponde, el pago recibido.'}</p><button disabled={a.busy}>Guardar revisión</button>
     </form>}
-    <details><summary>Historial de cambios ({data.audits.length})</summary>{data.audits.map(h => <p key={h.id}>{new Date(h.createdAt).toLocaleString('es-PE')} · {h.actor.name} {h.actor.lastName} · {labels[h.toStatus]}{h.note ? `: ${h.note}` : ''}</p>)}</details>
+    <details><summary>Historial de cambios ({data.audits.length})</summary>{data.audits.map(h => <p key={h.id}>{new Date(h.createdAt).toLocaleString('es-PE')} · {userLabel(h.actor)} · {labels[h.toStatus]}{h.note ? `: ${h.note}` : ''}</p>)}</details>
   </>}</State><Feedback state={a}/></>;
 }

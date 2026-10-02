@@ -20,8 +20,9 @@ model User {
   profileUserRows ParticipantProfile[] @relation("ProfileUser")
   registrationUserRows EventRegistration[] @relation("RegistrationUser")
   id String @id @default(uuid()) @db.Uuid
-  name String @db.VarChar(80)
-  lastName String @map("last_name") @db.VarChar(120)
+  username String @unique @db.VarChar(30)
+  name String @default("") @db.VarChar(80)
+  lastName String @default("") @map("last_name") @db.VarChar(120)
   email String @unique @db.VarChar(254)
   passwordHash String @map("password_hash") @db.VarChar(255)
   role String @default("USER") @db.VarChar(40)
@@ -45,6 +46,7 @@ model StoredFile {
   eventBannerRows Event[] @relation("EventBanner")
   benefitImageRows EventBenefit[] @relation("BenefitImage")
   profileAvatarRows ParticipantProfile[] @relation("ProfileAvatar")
+  profileBannerRows ParticipantProfile[] @relation("ProfileBanner")
   registrationProofRows EventRegistration[] @relation("RegistrationProof")
   id String @id @db.Uuid
   ownerId String @map("owner_id") @db.Uuid
@@ -408,7 +410,33 @@ model EventBenefit {
   @@map("event_benefits")
 }
 
+enum ProfileGender {
+  MALE
+  FEMALE
+  NON_BINARY
+  SELF_DESCRIBED
+  PREFER_NOT_TO_SAY
+}
+enum IdentityDocumentType {
+  DNI
+  FOREIGN_RESIDENT_CARD
+  PASSPORT
+}
 model ParticipantProfile {
+  name String? @db.VarChar(80)
+  lastName String? @map("last_name") @db.VarChar(120)
+  dateOfBirth DateTime? @map("date_of_birth") @db.Date
+  gender ProfileGender?
+  documentType IdentityDocumentType? @map("document_type")
+  documentNumber String? @map("document_number") @db.VarChar(30)
+  phone String? @db.VarChar(16)
+  countryCode String? @map("country_code") @db.Char(2)
+  department String? @db.VarChar(120)
+  province String? @db.VarChar(120)
+  district String? @db.VarChar(120)
+  ubigeoCode String? @map("ubigeo_code") @db.Char(6)
+  bannerFileId String? @map("banner_file_id") @db.Uuid
+  banner StoredFile? @relation("ProfileBanner", fields: [bannerFileId], references: [id], onDelete: Restrict)
   registrationProfileRows EventRegistration[] @relation("RegistrationProfile")
   id String @id @db.Uuid
   userId String @unique @map("user_id") @db.Uuid

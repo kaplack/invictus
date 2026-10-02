@@ -3,3 +3,4 @@ export { createAuthRouter } from './auth/auth.routes.js';
 export { createAuthMiddleware } from './middleware/auth.js';
 export { sessionCookieOptions } from './auth/cookies.js';
 export { AppError, errorHandler, notFoundHandler } from './http/errors.js';
+export { usernameSchema } from './auth/auth.validation.js';

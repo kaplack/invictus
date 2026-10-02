@@ -1,3 +1,4 @@
+import { userLabel } from '../helpers/user.js';
 import React, { useEffect, useState } from 'react';
 import { api, fileUrl } from '../services/api.js';
 import { useAction } from '../hooks/data.js';
@@ -44,7 +45,7 @@ export default function TeamHome({ team, user }) {
   const root = `#/mis-teams/${team.id}`;
   const edit = event => action.run(async () => setEditing(await api(`/events/mine/${event.id}`)), '');
   const editable = event => team.capabilities.edit && event.status === 'DRAFT' && ['DRAFT', 'CHANGES_REQUESTED'].includes(event.reviewStatus);
-  return <section className="team-home"><Heading eyebrow="RESUMEN DEL TEAM" title={`Hola, ${user.name?.trim() || 'deportista'}.`}><p>Esto es lo que está pasando en {team.name}.</p></Heading><Feedback state={action}/>
+  return <section className="team-home"><Heading eyebrow="RESUMEN DEL TEAM" title={`Hola, ${userLabel(user)}.`}><p>Esto es lo que está pasando en {team.name}.</p></Heading><Feedback state={action}/>
     {editing && <EventForm key={editing.id} endpoint="/events/mine" event={editing} close={() => setEditing(null)} saved={() => { setEditing(null); resource.reload(); }}/ >}
     <State resource={resource}>{data => {
       const events = data.events || [];

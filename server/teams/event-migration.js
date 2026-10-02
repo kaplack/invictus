@@ -8,7 +8,7 @@ const mappingInput = z.array(z.object({
 export async function eventTeamReport(db) {
   const events = await db.event.findMany({ where: { teamId: null }, select: {
     id: true, title: true, source: true, status: true, publicSlug: true, organizerId: true,
-    organizer: { select: { name: true, lastName: true, status: true, teamMemberships: {
+    organizer: { select: { username: true, name: true, lastName: true, status: true, teamMemberships: {
       where: { role: { in: ['OWNER', 'ADMIN'] }, team: { active: true } },
       select: { role: true, team: { select: { id: true, name: true } } },
     } } },
@@ -16,7 +16,7 @@ export async function eventTeamReport(db) {
   }, orderBy: { createdAt: 'asc' } });
   return { generatedAt: new Date().toISOString(), unassigned: events.length,
     events: events.map(e => ({ eventId: e.id, title: e.title, source: e.source, status: e.status, publicSlug: e.publicSlug,
-      expectedOrganizerId: e.organizerId, organizerName: `${e.organizer.name} ${e.organizer.lastName}`, organizerStatus: e.organizer.status,
+      expectedOrganizerId: e.organizerId, organizerName: [e.organizer.name, e.organizer.lastName].filter(Boolean).join(' ') || '@' + e.organizer.username, organizerStatus: e.organizer.status,
       registrations: e._count.registrationEventRows, candidateTeams: e.organizer.teamMemberships.map(m => ({ ...m.team, role: m.role })),
       teamId: null })),
     note: 'Los candidatos no son asignaciones. Preparar un array con eventId, expectedOrganizerId y teamId, revisarlo y simularlo antes de aplicar.' };

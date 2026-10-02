@@ -68,9 +68,7 @@ try {
     expect(r.ok(), await r.text()).toBeTruthy();
     return r.status() === 204 ? null : r.json();
   };
-  await call('post', '/auth/register', {
-    name: 'Lucía',
-    lastName: 'Piloto',
+  await call('post', '/auth/register', { username: 'test_' + randomUUID().replaceAll('-', '').slice(0,24),
     email: `console-${randomUUID()}@example.test`,
     password: 'Invictus-Test-2026!'
   });
@@ -162,9 +160,7 @@ try {
     headers: {
       Origin: origin
     },
-    data: {
-      name: 'Mario',
-      lastName: 'Prueba',
+    data: { username: 'test_' + randomUUID().replaceAll('-', '').slice(0,24),
       email: `member-${randomUUID()}@example.test`,
       password: 'Invictus-Test-2026!'
     }

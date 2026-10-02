@@ -18,7 +18,7 @@ export function createPersonalEvents({db,commerce,eventsFor,registrationsFor}) {
     async attendees(actor,id) {
       await eventsFor(db).getManaged(actor,id);
       const rows=await registrationsFor(db).service.listManaged(actor,id);
-      const users=await db.user.findMany({where:{id:{in:rows.map(r=>r.userId)}},select:{id:true,name:true,lastName:true,email:true}});
+      const users=await db.user.findMany({where:{id:{in:rows.map(r=>r.userId)}},select:{id:true,username:true,name:true,lastName:true,email:true}});
       return rows.map(r=>({id:r.id,status:r.status,participant:users.find(u=>u.id===r.userId)}));
     },
     async save(actor,id,input) {

@@ -18,7 +18,7 @@ try {
   await vite.listen(); browser = await chromium.launch({ channel: 'msedge', headless: true });
   const context = await browser.newContext();
   const api = (path, data) => context.request.post(origin + '/api' + path, { headers: { Origin: origin }, data });
-  expect((await api('/auth/register', { name: 'Ana', lastName: 'Categorías', email: `${randomUUID()}@example.test`, password: 'Invictus-Test-2026!' })).status()).toBe(201);
+  expect((await api('/auth/register', { username: 'test_' + randomUUID().replaceAll('-', '').slice(0,24), email: `${randomUUID()}@example.test`, password: 'Invictus-Test-2026!' })).status()).toBe(201);
   const team = await (await api('/teams', { name: 'Nadadores del Callao' })).json();
   const page = await context.newPage(); await page.setViewportSize({ width: 1440, height: 1000 });
   const errors = []; page.on('pageerror', error => errors.push(error.message));

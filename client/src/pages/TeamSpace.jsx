@@ -1,3 +1,4 @@
+import { userLabel } from '../helpers/user.js';
 import React, { useState } from 'react';
 import { api, fileUrl } from '../services/api.js';
 import { useData, useAction } from '../hooks/data.js';
@@ -129,7 +130,7 @@ function Settings({
 }
 function Requests({ team, reload, resource }) {
   const action = useAction();
-  return <section className="card team-requests"><h2>Solicitudes de ingreso</h2><p className="muted">Decide quién se incorpora al equipo. Las invitaciones se aceptan desde la cuenta de cada persona.</p><Feedback state={action} /><State resource={resource}>{items => items.length ? items.map(i => <div className="card team-invitation" key={i.id}><strong>{i.user.name} {i.user.lastName}</strong><div className="actions">{[true, false].map(accept => <button key={String(accept)} className="secondary" disabled={action.busy} onClick={() => action.run(async () => {
+  return <section className="card team-requests"><h2>Solicitudes de ingreso</h2><p className="muted">Decide quién se incorpora al equipo. Las invitaciones se aceptan desde la cuenta de cada persona.</p><Feedback state={action} /><State resource={resource}>{items => items.length ? items.map(i => <div className="card team-invitation" key={i.id}><strong>{userLabel(i.user)}</strong><div className="actions">{[true, false].map(accept => <button key={String(accept)} className="secondary" disabled={action.busy} onClick={() => action.run(async () => {
             await api(`/teams/${team.id}/admissions/${i.id}`, 'POST', {
               accept
             });

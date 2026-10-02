@@ -62,7 +62,7 @@ export async function prepareRegistration(tx, user, eventId, raw) {
   return { manualReview: true, event: { amountCents: category.priceCents, currency: category.currency, paymentRecipientId: method ? event.team.paymentRecipientId : null },
     payment: method ? { instructions, qrFileId: method.qrFileId } : undefined,
     data: { categoryId: category.id, methodId: method?.id || null, amountCents: category.priceCents, currency: category.currency, categorySnapshot,
-      participantSnapshot: { name: user.name, lastName: user.lastName, email: user.email, ...input.participant } } };
+      participantSnapshot: { username: user.username, name: user.name, lastName: user.lastName, email: user.email, ...input.participant } } };
 }
 
 async function categoryRegistration(tx, operation) {

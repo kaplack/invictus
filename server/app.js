@@ -49,6 +49,8 @@ export async function createApp({database,Prisma,config}) {
  app.post('/api/events/manage/:id/publish',auth.requireAuth,async(req,res)=>res.json(await s.events.publish(req.user,req.params.id)));
  app.get('/api/events/manage/:id/attendees',auth.requireAuth,async(req,res)=>res.json(await s.events.attendees(req.user,req.params.id)));
  app.post('/api/events/:id/register',auth.requireAuth,async(req,res)=>res.status(201).json(await s.events.enroll(req.user,req.params.id,req.body)));
+ app.get('/api/profile/location-catalog',auth.requireAuth,async(req,res)=>res.json(await s.profiles.locationCatalog(req.user)));
+ app.get('/api/profile/username-availability',auth.requireAuth,rateLimit({windowMs:60000,limit:120}),async(req,res)=>res.json(await s.profiles.usernameAvailability(req.user,req.query.username)));
  app.get('/api/profile',auth.requireAuth,async(req,res)=>res.json(await s.profiles.getMine(req.user)));
  app.put('/api/profile',auth.requireAuth,async(req,res)=>res.json(await s.profiles.save(req.user,req.body)));
  app.get('/api/profile/registrations',auth.requireAuth,async(req,res)=>res.json(await s.events.history(req.user)));

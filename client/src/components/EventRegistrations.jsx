@@ -1,3 +1,4 @@
+import { userLabel } from '../helpers/user.js';
 import React, { useState } from 'react';
 import { Modal } from './Modal.jsx';
 import { State, Field, Records, Status } from './UI.jsx';
@@ -20,7 +21,7 @@ export default function EventRegistrations({ event, close }) {
         </div><button className="secondary">Aplicar filtros</button>
       </form><p>{data.total} inscripciones encontradas.</p>
       <Records items={data.items} columns={[
-        { label: 'Participante', render: i => <>{i.user.name} {i.user.lastName}<p>{i.user.email}</p></> },
+        { label: 'Participante', render: i => <>{userLabel(i.user)}<p>{i.user.email}</p></> },
         { label: 'Categoría', render: i => i.categorySnapshot?.name || 'General' },
         { label: 'Importe y método', render: i => <>{categoryPrice({ priceCents: i.amountCents || 0, currency: i.currency || 'PEN' })}<p>{i.paymentInstructionsSnapshot?.label || 'Sin pago'}</p></> },
         { label: 'Estado', render: i => i.categoryId ? <RegistrationStatus status={i.status}/> : <Status value={i.status}/> },

@@ -22,7 +22,7 @@ try {
     if (!r.ok()) throw new Error(`${path}: ${r.status()} ${await r.text()}`);
     return r.json();
   };
-  const register = (context,name) => post(context,'/auth/register',{ name,lastName:'Piloto',email:`${randomUUID()}@example.test`,password:'Invictus-Test-2026!' });
+  const register = (context,name) => post(context,'/auth/register',{ username: 'test_' + randomUUID().replaceAll('-', '').slice(0,24),email:`${randomUUID()}@example.test`,password:'Invictus-Test-2026!' });
   const ownerUser = await register(owner,'Ana'); await register(participant,'María');
   const team = await post(owner,'/teams',{name:'Nadadores del Callao'});
   const method = await post(owner,`/teams/${team.id}/payment-methods`,{type:'YAPE',label:'Yape del Team',phone:'999123456',holderName:'Ana Piloto'});

@@ -8,6 +8,7 @@ const ACTIVITY_UPDATE_MS = 15 * 60 * 1000;
 function publicUser(user) {
   return {
     id: user.id,
+    username: user.username,
     name: user.name,
     lastName: user.lastName,
     email: user.email,
@@ -37,18 +38,28 @@ export function createAuthService({ database, sessionDays = 7 } = {}) {
   }
 
   return {
-    async register({ name, lastName, email, password }) {
+    async usernameAvailability(username) {
+      const user = await database.user.findUnique({ where: { username: username.trim().toLowerCase() }, select: { id: true } });
+      return { available: !user };
+    },
+
+    async register({ username, email, password }) {
+      const normalizedUsername = username.trim().toLowerCase();
       const normalizedEmail = normalizeEmail(email);
       const existingUser = await database.user.findUnique({ where: { email: normalizedEmail } });
       if (existingUser) throw new AppError('El correo ya está registrado', 409, 'EMAIL_IN_USE');
 
+      if (await database.user.findUnique({ where: { username: normalizedUsername }, select: { id: true } })) {
+        throw new AppError('Este nombre de usuario ya está en uso', 409, 'USERNAME_IN_USE');
+      }
       const passwordHash = await hashPassword(password);
       try {
         return await database.$transaction(async (tx) => {
           const user = await tx.user.create({
             data: {
-              name: name.trim(),
-              lastName: lastName.trim(),
+              username: normalizedUsername,
+              name: '',
+              lastName: '',
               email: normalizedEmail,
               passwordHash,
             },
@@ -58,7 +69,13 @@ export function createAuthService({ database, sessionDays = 7 } = {}) {
         });
       } catch (error) {
         if (error.code === 'P2002') {
-          throw new AppError('El correo ya está registrado', 409, 'EMAIL_IN_USE');
+          const target = error.meta?.target;
+          if (Array.isArray(target) && target.includes('username')) {
+            throw new AppError('Este nombre de usuario ya está en uso', 409, 'USERNAME_IN_USE');
+          }
+          if (Array.isArray(target) && target.includes('email')) {
+            throw new AppError('El correo ya está registrado', 409, 'EMAIL_IN_USE');
+          }
         }
         throw error;
       }

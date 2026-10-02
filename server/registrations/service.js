@@ -3,7 +3,7 @@ import { requireEventManager, lockManagedEvent, teamSummary } from '../teams/eve
 import { enrollmentInput, correctionInput, reviewInput, validateParticipant, audit, fail, paymentCodes, reservedStates } from './policy.js';
 
 const uuid = z.uuid();
-const person = { id: true, name: true, lastName: true, email: true };
+const person = { id: true, username: true, name: true, lastName: true, email: true };
 export function createCategoryRegistrations({ database: db, commerce, registrationsFor, paymentsFor, files }) {
   async function accessible(database, user, id, manager = false) {
     uuid.parse(id);
@@ -64,7 +64,7 @@ export function createCategoryRegistrations({ database: db, commerce, registrati
       const r = await accessible(db, user, id);
       const [payments, audits] = await Promise.all([
         db.manualPayment.findMany({ where: { operationId: id }, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }] }),
-        db.registrationAudit.findMany({ where: { registrationId: id }, include: { actor: { select: { name: true, lastName: true } } }, orderBy: { createdAt: 'asc' } }),
+        db.registrationAudit.findMany({ where: { registrationId: id }, include: { actor: { select: { username: true, name: true, lastName: true } } }, orderBy: { createdAt: 'asc' } }),
       ]);
       return { ...r, payments, audits };
     },
@@ -111,7 +111,7 @@ export function createCategoryRegistrations({ database: db, commerce, registrati
       if (!event) fail('Evento no disponible', 'NOT_FOUND', 404);
       await requireEventManager(db, user, event);
       const where = { eventId, ...(input.status ? { status: input.status } : {}), ...(input.categoryId ? { categoryId: input.categoryId } : {}),
-        ...(input.q ? { user: { OR: ['name','lastName','email'].map(key => ({ [key]: { contains: input.q, mode: 'insensitive' } })) } } : {}) };
+        ...(input.q ? { user: { OR: ['name','lastName','username','email'].map(key => ({ [key]: { contains: input.q, mode: 'insensitive' } })) } } : {}) };
       const [items, total, groups, categories, categoryCounts, configuration] = await Promise.all([
         db.eventRegistration.findMany({ where, include: { user: { select: person } }, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }], take: 20, skip: input.offset }),
         db.eventRegistration.count({ where }), db.eventRegistration.groupBy({ by: ['status'], where: { eventId }, _count: true }),

@@ -22,13 +22,13 @@ try {
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto(origin + '/#/acceso');
   await page.getByRole('button', { name: 'Crear una cuenta', exact: true }).click();
-  await page.getByLabel('Nombre', { exact: true }).fill('Lucía');
-  await page.getByLabel('Apellidos').fill('Piloto');
+  await page.getByLabel('Nombre de usuario').fill('ui_' + randomUUID().replaceAll('-', '').slice(0,24));
   await page.getByLabel('Correo electrónico').fill(`teams-ui-${randomUUID()}@example.test`);
   await page.getByLabel('Contraseña').fill('Invictus-Test-2026!');
-  await page.getByRole('button', { name: 'Crear cuenta →', exact: true }).click();
-  await page.getByRole('heading', { name: 'Mi perfil', exact: true }).waitFor();
-  await page.getByRole('button', { name: 'Mi cuenta: Lucía' }).click();
+  await expect(page.getByRole('button', { name: 'Crear cuenta', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Crear cuenta', exact: true }).click();
+  await page.getByRole('heading', { name: 'Perfil', exact: true }).waitFor();
+  await page.getByRole('button', { name: /^Cuenta:/ }).click();
   await page.getByRole('link', { name: 'Mis Teams', exact: true }).click();
   await page.getByRole('heading', { name: 'Tu próximo evento empieza con un equipo.' }).waitFor();
   await page.getByRole('button', { name: 'Crear Team', exact: true }).click();
@@ -40,7 +40,7 @@ try {
   const teamUrl = page.url();
   const other = await browser.newContext();
   const email = `teams-member-${randomUUID()}@example.test`;
-  const registered = await other.request.post(origin + '/api/auth/register', { headers: { Origin: origin }, data: { name: 'Mario', lastName: 'Prueba', email, password: 'Invictus-Test-2026!' } });
+  const registered = await other.request.post(origin + '/api/auth/register', { headers: { Origin: origin }, data: { username: 'test_' + randomUUID().replaceAll('-', '').slice(0,24), email, password: 'Invictus-Test-2026!' } });
   expect(registered.status()).toBe(201);
   await page.getByRole('button', { name: 'Agregar miembro' }).click();
   await page.getByLabel('Correo de su cuenta en Invictus').fill(email);

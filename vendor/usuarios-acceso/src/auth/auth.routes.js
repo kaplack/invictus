@@ -15,6 +15,16 @@ export function createAuthRouter({ authService, authMiddleware, cookieName, cook
       }),
   });
 
+  const availabilityLimiter = rateLimit({ windowMs: 60000, limit: 120,
+    standardHeaders: 'draft-8', legacyHeaders: false,
+    handler: (req, res) => res.status(429).json({ error: { code: 'TOO_MANY_ATTEMPTS', message: 'Demasiadas consultas; prueba más tarde' } }) });
+  router.get('/username-availability', availabilityLimiter, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      res.json(await authService.usernameAvailability(authValidation.username(req.query.username)));
+    } catch (error) { next(error); }
+  });
+
   router.post('/register', authLimiter, async (req, res, next) => {
     try {
       const result = await authService.register(authValidation.register(req.body));

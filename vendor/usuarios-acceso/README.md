@@ -12,12 +12,12 @@ Monta el router con { authService, authMiddleware, cookieName, cookieOptions }. 
 
 | Método y ruta relativa | Entrada / resultado |
 | --- | --- |
-| POST /register | name, lastName, email, password; devuelve 201 { user } y cookie |
+| POST /register | username, email, password; devuelve 201 { user } y cookie |
 | POST /login | email, password; devuelve 200 { user } y cookie |
 | POST /logout | revoca la sesión recibida; 204 y eliminación de cookie |
 | GET /session | requireAuth; devuelve { user } o 401 |
 
-Usuario público: id, name, lastName, email, role, status. Errores: { error: { code, message, details? } }. Códigos esperados: VALIDATION_ERROR (400), INVALID_CREDENTIALS (401), AUTHENTICATION_REQUIRED (401), ACCOUNT_SUSPENDED/FORBIDDEN (403), EMAIL_IN_USE (409), TOO_MANY_ATTEMPTS (429).
+Usuario público: id, username, name, lastName, email, role, status. Errores: { error: { code, message, details? } }. Códigos esperados: VALIDATION_ERROR (400), INVALID_CREDENTIALS (401), AUTHENTICATION_REQUIRED (401), ACCOUNT_SUSPENDED/FORBIDDEN (403), EMAIL_IN_USE/USERNAME_IN_USE (409), TOO_MANY_ATTEMPTS (429).
 
 Conserva scrypt con sal aleatoria, token opaco de 32 bytes, hash SHA-256 del token en PostgreSQL, cookie HttpOnly/SameSite=Lax, 20 intentos por IP cada 15 minutos y renovación durante el último día de una sesión. sessionDays admite 2–30 días. Registro y sesión se crean en una transacción. El cierre revoca únicamente la sesión actual; otras sesiones siguen vigentes. La suspensión invalida el acceso, pero este módulo no contiene interfaz de administración.
 
@@ -28,3 +28,5 @@ No incluye recuperación de contraseña, correo verificado, MFA ni administraci�
 La composición del ejemplo es exclusivamente local. Para otro despliegue, el consumidor debe configurar HTTPS/cookies Secure, orígenes permitidos y un almacén compartido para el limitador si hay varias instancias. Las sesiones antiguas no se purgan automáticamente. La renovación conserva el comportamiento del origen: solicitudes concurrentes con el token anterior pueden recibir 401; no se ha añadido coordinación de rotaciones.
 
 Consulta ../../ejemplos/usuarios-acceso/README.md para ejecutar y ../../catalogo/usuarios-acceso.md para procedencia y evidencia.
+
+Registro: username normalizado (3–30, a–z/0–9/./_), contraseña 8–128 caracteres. GET /username-availability?username=… devuelve { available }; el índice UNIQUE es la autoridad final.

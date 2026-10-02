@@ -77,7 +77,7 @@ export default function Application() {
     page = <Shop user={user} cart={cart} setCart={setCart} />;
   else if (route === "/cotizar") page = <Quote />;
   else if (route === "/cuenta" || route === "/perfil")
-    page = <Account user={user} />;
+    page = <Account user={user} onSession={setUser} />;
   else if (route === "/inscripciones") page = <Registrations />;
   else if (route === "/mis-eventos") page = <Teams user={user} />;
   else if (route === '/mis-teams' || route.startsWith('/mis-teams/')) page = <Teams id={route.split('/')[2]} user={user} section={route.split('/')[3] || 'inicio'} tab={route.split('/')[4]} onLogout={logout} sessionError={error}/>;

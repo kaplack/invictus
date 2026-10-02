@@ -14,7 +14,7 @@ test.after(() => db.$disconnect());
 const send = (a, method, path, body = {}) => a[method]('/api' + path).set('Origin', origin).send(body);
 async function account(role = 'USER') {
   const agent = request.agent(app);
-  const { body } = await send(agent, 'post', '/auth/register', { name: 'Setup', lastName: 'Team', email: `${randomUUID()}@example.test`, password: 'Invictus-Test-2026!' }).expect(201);
+  const { body } = await send(agent, 'post', '/auth/register', { username: 'test_' + randomUUID().replaceAll('-', '').slice(0,24), email: `${randomUUID()}@example.test`, password: 'Invictus-Test-2026!' }).expect(201);
   if (role !== 'USER') await db.user.update({ where: { id: body.user.id }, data: { role } });
   return { agent, user: body.user };
 }

@@ -1,17 +1,12 @@
 import { z } from 'zod';
 import { AppError } from '../http/errors.js';
 
+export const usernameSchema = z.string().trim().toLowerCase().min(3).max(30)
+  .regex(/^[a-z0-9._]+$/, 'Usa letras a–z, números, punto o guion bajo');
 const registerSchema = z.object({
-  name: z.string().trim().min(2, 'Ingresa tu nombre').max(80),
-  lastName: z.string().trim().min(2, 'Ingresa tus apellidos').max(120),
+  username: usernameSchema,
   email: z.string().trim().email('Ingresa un correo válido').max(254),
-  password: z
-    .string()
-    .min(10, 'La contraseña debe tener al menos 10 caracteres')
-    .max(128)
-    .regex(/[a-z]/, 'Incluye una letra minúscula')
-    .regex(/[A-Z]/, 'Incluye una letra mayúscula')
-    .regex(/[0-9]/, 'Incluye un número'),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').max(128),
 });
 
 const loginSchema = z.object({
@@ -29,6 +24,7 @@ function parse(schema, value) {
 }
 
 export const authValidation = {
+  username: (value) => parse(usernameSchema, value),
   register: (body) => parse(registerSchema, body),
   login: (body) => parse(loginSchema, body),
 };

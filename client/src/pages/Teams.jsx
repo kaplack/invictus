@@ -1,3 +1,4 @@
+import { userLabel } from '../helpers/user.js';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAction, useData } from '../hooks/data.js';
 import { Field, Textarea, State, Feedback, Records, Heading } from '../components/UI.jsx';
@@ -101,12 +102,12 @@ export function Members({ team, user, reloadTeam, children, showList = true }) {
     {children}
     {showList && <State resource={resource}>{data => <div className="card team-member-list"><div className="team-panel-heading"><h2>Integrantes del equipo</h2><small>{data.items.length} {data.items.length === 1 ? 'persona en esta página' : 'personas en esta página'}</small></div>
       <Records items={data.items} columns={[
-        { label: 'Nombre', render: member => <div className="team-member-identity"><span className="workspace-monogram" aria-hidden="true">{member.user.name?.slice(0,1) || '?'}</span><strong>{member.user.name} {member.user.lastName}{member.userId === user.id && <small> (tú)</small>}</strong></div> },
+        { label: 'Nombre', render: member => <div className="team-member-identity"><span className="workspace-monogram" aria-hidden="true">{(member.user.name || member.user.username || '?').slice(0,1)}</span><strong>{userLabel(member.user)}{member.userId === user.id && <small> (tú)</small>}</strong></div> },
         { label: 'Rol', render: member => <span className="badge team-role" data-role={member.role}>{roles[member.role]}</span> },
       ]} actions={team.capabilities.members ? member => <>
         <button className="secondary" disabled={action.busy} onClick={() => setEditing(member)}>Cambiar rol</button>
         <button className="danger" disabled={action.busy} onClick={() => {
-          if (confirm(`¿Quitar a ${member.user.name} de este Team? Perderá su acceso.`)) action.run(async () => {
+          if (confirm(`¿Quitar a ${userLabel(member.user)} de este Team? Perderá su acceso.`)) action.run(async () => {
             await removeMember(team.id, member.id);
             if (member.userId === user.id) location.hash = '/mis-teams';
             else { if (data.items.length === 1 && offset) setOffset(offset - 20); refresh(); }
@@ -126,7 +127,7 @@ function MemberForm({ team, member, close, saved }) {
       event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget));
       action.run(async () => { if (member) await changeMemberRole(team.id, member.id, values.role); else await api(`/teams/${team.id}/invitations`, 'POST', {email:values.email}); saved(); });
     }}>
-      {member ? <p>{member.user.name} {member.user.lastName}</p> : <><Field label="Correo de su cuenta en Invictus" type="email" name="email" required maxLength={254}/><small>La persona debe estar registrada. Recibirá la invitación en Teams y deberá aceptarla.</small></>}
+      {member ? <p>{userLabel(member.user)}</p> : <><Field label="Correo de su cuenta en Invictus" type="email" name="email" required maxLength={254}/><small>La persona debe estar registrada. Recibirá la invitación en Teams y deberá aceptarla.</small></>}
       {member ? <label>Rol<select name="role" defaultValue={member.role}><RoleOptions/></select></label> : <p>Ingresará con el rol Miembro.</p>}
       <p>Propietario: gestiona miembros, acceso, cobros, perfil y eventos. Administrador: edita el perfil y gestiona eventos. Miembro: consulta el Team. Siempre debe quedar al menos un propietario.</p>
       <Feedback state={action}/><div className="actions"><button disabled={action.busy}>{action.busy ? 'Guardando…' : member ? 'Guardar rol' : 'Enviar invitación'}</button><button type="button" className="secondary" disabled={action.busy} onClick={close}>Cancelar</button></div>
