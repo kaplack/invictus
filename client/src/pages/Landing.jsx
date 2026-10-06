@@ -41,7 +41,7 @@ export default function Landing(){
  return <div className="events-home">
   <section className="events-home-hero" aria-labelledby="home-title">
    <div className="events-home-intro">
-    <h1 id="home-title">Encuentra eventos deportivos<br/><em>e inscríbete fácilmente.</em></h1>
+    <h1 id="home-title">Encuentra eventos<span className="hero-mobile-break"><br/></span><span className="hero-desktop-space"> </span>deportivos<br/><em>e inscríbete fácilmente.</em></h1>
     <div className="events-home-actions"><a className="button" href="#proximos-eventos">Explorar eventos <span aria-hidden="true">↓</span></a><a className="button secondary" href="/mis-eventos?crear=1">Crear evento <span aria-hidden="true">↗</span></a></div>
    </div>
   </section>

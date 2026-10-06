@@ -26,3 +26,6 @@
 .events-home-intro .button.secondary:hover{background:var(--landing-surface);border-color:var(--landing-gold)}
 #proximos-eventos{scroll-margin-top:24px}
 @media(max-width:600px){.events-home-intro>p{font-size:14px}.events-home-actions{gap:8px}}
+
+.hero-mobile-break{display:none}
+@media(max-width:600px){.hero-mobile-break{display:inline}.hero-desktop-space{display:none}.events-home-hero{align-items:end;padding-bottom:24px}}
