@@ -3,6 +3,7 @@ import {api,fileUrl} from '../services/api.js';
 import {useAction} from '../hooks/data.js';
 import {Feedback} from './UI.jsx';
 import {OutlineIcon} from './OutlineIcon.jsx';
+import {IconAction} from './IconAction.jsx';
 import {Modal} from './Modal.jsx';
 import {eventPrice,eventDate} from './EventCards.jsx';
 import {categoryPrice} from './EventSetup.jsx';
@@ -57,7 +58,17 @@ export function EventDetail({event,user}) {
    {organizer&&<section className="event-detail-panel"><h2><OutlineIcon name="users"/>Organizador</h2><p>{organizer}</p></section>}
   </div>
   <aside className="event-detail-summary" aria-label="Inscripción al evento"><div className="event-detail-price">{price?<><small>{price.label||'Inscripción'}</small><strong>{price.value}</strong></>:<strong>Evento informativo</strong>}</div>{registerButton()}<button type="button" className="secondary event-detail-share-button event-detail-mobile-share" aria-label="Compartir evento" title="Compartir evento" onClick={()=>setSharing(true)}><OutlineIcon name="share"/></button><div className="event-detail-summary-extra"><p>{eventDate(event)}</p><p>{event.venue}</p><button className="secondary" onClick={()=>setSharing(true)}>Compartir ↗</button></div></aside></div>
-  {sharing&&<Modal title="Compartir evento" onClose={()=>setSharing(false)}><div className="event-share"><label>Enlace del evento<input readOnly value={shareUrl} onFocus={e=>e.target.select()}/></label><button onClick={()=>shareAction.run(()=>navigator.clipboard.writeText(shareUrl),'Enlace copiado.')}>Copiar enlace</button><a className="button secondary" href={'https://wa.me/?text='+encodeURIComponent(event.title+' '+shareUrl)} target="_blank" rel="noopener noreferrer">Compartir por WhatsApp</a>{event.qrDataUrl&&<><img src={event.qrDataUrl} alt="QR del enlace público del evento"/><a className="button secondary" href={event.qrDataUrl} download={event.publicSlug+'-qr.png'}>Descargar QR</a></>}<Feedback state={shareAction}/></div></Modal>}
+  {sharing&&<Modal title="Compartir evento" className="event-share-modal" onClose={()=>setSharing(false)}><div className="event-share">
+   <p className="event-share-title">{event.title}</p>
+   <label>Enlace del evento<input readOnly value={shareUrl} onFocus={e=>e.target.select()}/></label>
+   <div className="event-share-actions" role="group" aria-label="Opciones para compartir">
+    <IconAction label="Copiar enlace" icon="copy" disabled={shareAction.busy} onClick={()=>shareAction.run(()=>navigator.clipboard.writeText(shareUrl),'Enlace copiado.')}/>
+    <span className="event-share-whatsapp"><IconAction label="Compartir por WhatsApp" icon="whatsapp" href={'https://wa.me/?text='+encodeURIComponent(event.title+' '+shareUrl)} target="_blank" rel="noopener noreferrer"/></span>
+    {event.qrDataUrl&&<IconAction label="Descargar QR" icon="download" href={event.qrDataUrl} download={event.publicSlug+'-qr.png'}/>}
+   </div>
+   {event.qrDataUrl&&<figure className="event-share-qr"><img src={event.qrDataUrl} alt="QR del enlace público del evento"/><figcaption>Escanea para ver el evento</figcaption></figure>}
+   <Feedback state={shareAction}/>
+  </div></Modal>}
   {enrolling&&(user?<CategoryEnrollment event={event} initialCategoryId={categoryId} close={()=>{setEnrolling(false);setRevision(v=>v+1);}}/>:<GuestEnrollment event={event} initialCategoryId={categoryId} close={()=>setEnrolling(false)}/>)}
  </article>;
 }

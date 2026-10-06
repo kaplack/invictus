@@ -1,5 +1,8 @@
 import React from 'react';
 const paths = {
+  copy: <><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></>,
+  download: <><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></>,
+  whatsapp: <><path d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l1.8-5A8.5 8.5 0 1 1 20.5 11.5Z"/><path d="m8 7 2 3-1 1c1 2 2 3 4 4l1-1 3 2c-1 3-4 2-7 0s-5-6-2-9Z"/></>,
   search: <><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></>,
   filter: <><path d="M3 4h18l-7 8v7l-4 2v-9L3 4Z"/></>,
   share: <><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4m-6.8 7 6.8 4"/></>,

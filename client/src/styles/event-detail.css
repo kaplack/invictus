@@ -35,7 +35,19 @@
 .event-detail-summary{position:fixed;bottom:0;left:0;right:0;z-index:20;border-radius:0;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 5vw;padding-bottom:calc(14px + env(safe-area-inset-bottom));box-shadow:0 -8px 24px #0004}
 .event-detail-price{display:flex;flex-direction:column;gap:4px}.event-detail-price small{color:var(--landing-muted)}.event-detail-price strong{font-size:26px;color:var(--landing-gold)}
 .event-detail-summary-extra{display:none}.event-detail-summary .event-register{flex-shrink:0}
-.event-share{display:flex;flex-direction:column;gap:16px}.event-share img{width:200px;max-width:100%;align-self:center}.event-share input{width:100%;box-sizing:border-box}
+.app-modal.event-share-modal{width:min(440px,calc(100vw - 24px))}
+.event-share-modal .app-modal-header{margin-bottom:16px}
+.event-share{display:flex;flex-direction:column;gap:16px}
+.event-share-title{margin:0;color:var(--landing-muted);font-size:14px;line-height:1.5}
+.event-share input{width:100%;min-width:0;box-sizing:border-box;font-weight:400;font-size:13px}
+.event-share-actions{display:flex;justify-content:center;align-items:center;gap:16px}
+.event-share-whatsapp .event-icon-button svg{color:currentColor}
+.event-share-actions .event-action-tooltip{white-space:normal;width:max-content;max-width:180px;text-align:center}
+.event-share-qr{margin:0;display:flex;flex-direction:column;align-items:center;gap:12px}
+.event-share-qr img{width:200px;max-width:100%;height:auto;border-radius:8px}
+.event-share-qr figcaption{color:var(--landing-muted);font-size:13px;text-align:center}
+.event-share>.success,.event-share>.error{margin:0}
+.event-share>.success:empty,.event-share>.error:empty{display:none}
 .event-detail-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.event-detail-gallery img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px}
 @media(max-width:350px){.event-detail-facts{grid-template-columns:1fr}.event-detail-summary{gap:8px}.event-detail-price strong{font-size:20px}.event-detail-category{flex-wrap:wrap}.event-detail-category b{margin-left:auto}}
 @media(min-width:900px){.public-events.event-single{padding-bottom:50px}.event-detail-hero{min-height:340px}.event-detail-intro{padding:28px 4vw}.event-detail-actions>.event-register{width:auto}.event-detail-layout{display:grid;grid-template-columns:minmax(0,8fr) minmax(260px,4fr);gap:24px;padding:24px 4vw}.event-detail-summary{position:sticky;top:24px;align-self:start;display:flex;flex-direction:column;align-items:stretch;border-radius:14px;padding:24px;box-shadow:none}.event-detail-summary-extra{display:block;color:var(--landing-muted)}.event-detail-summary-extra button{width:100%}.event-detail-categories{grid-template-columns:repeat(2,minmax(0,1fr))}.event-detail-facts{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
@@ -82,3 +94,10 @@
 }
 @media(min-width:900px){.event-detail .event-detail-mobile-share{display:none}}
 @media(max-width:350px){.event-detail-summary{gap:6px}.event-detail-summary .event-register{padding-inline:10px}}
+.public-events .event-share-actions .event-icon-action{position:relative;display:inline-flex}
+.public-events .event-share-actions .event-icon-button{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;min-height:48px;padding:0;border:1px solid var(--landing-line);border-radius:12px;background:var(--landing-surface);color:var(--landing-text);text-decoration:none}
+.public-events .event-share-actions .event-icon-button:hover{border-color:var(--landing-gold);background:var(--landing-bg)}
+.public-events .event-share-actions .event-icon-button:focus-visible{outline:2px solid var(--landing-gold);outline-offset:3px}
+.public-events .event-share-whatsapp .event-icon-button{background:var(--landing-gold);border-color:var(--landing-gold);color:var(--landing-bg)}
+.public-events .event-share-whatsapp .event-icon-button:hover,.public-events .event-share-whatsapp .event-icon-button:focus-visible{background:var(--landing-gold-hover);color:var(--landing-bg)}
+.event-share-actions .event-action-tooltip{border-color:var(--landing-line)}
