@@ -1,4 +1,5 @@
 import express from 'express';
+import {createPublicWebRouter} from './social-preview.js';
 import {profileAwareAuth} from './profile/identity.js';
 import {createGuestRegistrationRouter} from './registrations/guest-routes.js';
 const isGuestProof=req=>req.method==='POST'&&/^\/(?:api\/)?events\/[a-f0-9-]{36}\/guest-proof$/.test(req.path);
@@ -70,6 +71,7 @@ export async function createApp({database,Prisma,config}) {
  app.get('/api/admin/quotes',auth.requireAuth,async(req,res)=>res.json(await quotes.list(req.user)));
  app.get('/api/admin/users',auth.requireAuth,async(req,res)=>res.json(await s.users.list(req.user)));
  app.patch('/api/admin/users/:id/role',auth.requireAuth,async(req,res)=>res.json(await s.users.role(req.user,req.params.id,req.body.role)));
+ if(config.NODE_ENV==='production')app.use(createPublicWebRouter({events:s.events,publicUrl:config.PUBLIC_WEB_URL}));
  app.use((req,res)=>res.status(404).json({error:{code:'NOT_FOUND',message:'No encontrado'}}));
  app.use((error,req,res,next)=>{if(res.headersSent)return next(error);const status=error.status||error.statusCode||400*(error.name==='ZodError')||500;const known=status<500; if(!known)console.error(JSON.stringify({event:'request_failed',code:error.code||error.name}));res.status(status).json({error:{code:known?error.code||'INVALID_INPUT':'INTERNAL_ERROR',message:known?error.message:'No pudimos completar la solicitud. Intenta nuevamente.'}});});
  return app;
