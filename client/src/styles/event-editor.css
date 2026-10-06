@@ -5,3 +5,9 @@
 .event-editor-optional{border-top:1px solid var(--landing-line);padding:16px 0;margin-top:12px}.event-editor-optional summary{cursor:pointer;font-weight:700;min-height:32px}.event-editor-optional[open] summary{margin-bottom:16px}.event-editor-optional .check{margin:12px 0}.event-editor-review-links{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
 
 .event-editor-kits>.check{margin:20px 0 24px}.event-editor-kits>p{color:var(--landing-muted)}
+
+.event-editor-steps{display:flex;flex-wrap:nowrap;gap:12px}.event-editor-steps button{flex:0 0 48px;width:48px;height:48px;padding:0;font-size:18px}.event-editor-steps button:focus-visible{outline:2px solid var(--landing-gold);outline-offset:3px}
+
+.event-editor-footer .event-icon-action{position:relative;display:inline-flex}.event-editor-footer .event-icon-button{width:48px;height:48px;min-height:48px;padding:0;border:1px solid var(--landing-line);background:var(--landing-surface);color:var(--landing-text)}.event-editor-footer .event-icon-button[type=submit]{background:var(--landing-gold);border-color:var(--landing-gold);color:var(--landing-bg)}.event-editor-footer .event-icon-button:hover{background:var(--landing-bg);border-color:var(--landing-gold)}.event-editor-footer .event-icon-button[type=submit]:hover{background:var(--landing-gold-hover);border-color:var(--landing-gold-hover)}.event-editor-footer .event-icon-button:focus-visible{outline:2px solid var(--landing-gold);outline-offset:3px}.event-editor-footer .event-action-tooltip{border-color:var(--landing-line);right:auto;left:0}
+
+.event-editor-footer{justify-content:flex-end}.event-editor-footer>button{flex:0 0 auto}.event-editor-footer .event-action-tooltip{left:auto;right:0}

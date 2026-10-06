@@ -1,5 +1,7 @@
 import React from 'react';
 const paths = {
+  previous: <><path d="M20 12H4m6-6-6 6 6 6"/></>,
+  next: <><path d="M4 12h16m-6-6 6 6-6 6"/></>,
   copy: <><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></>,
   download: <><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></>,
   whatsapp: <><path d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l1.8-5A8.5 8.5 0 1 1 20.5 11.5Z"/><path d="m8 7 2 3-1 1c1 2 2 3 4 4l1-1 3 2c-1 3-4 2-7 0s-5-6-2-9Z"/></>,
