@@ -1,4 +1,8 @@
+import {navigate} from '../services/navigation.js';
+import { Trajectory } from '../components/Trajectory.jsx';
 import React, { useRef, useState } from 'react';
+import { api } from '../services/api.js';
+import { useAction } from '../hooks/data.js';
 import { fileUrl } from '../services/api.js';
 import { useData } from '../hooks/data.js';
 import { useProfileEditor } from '../hooks/profile.js';
@@ -6,18 +10,40 @@ import { useUsernameAvailability } from '../hooks/username.js';
 import { State, Feedback } from '../components/UI.jsx';
 import { OutlineIcon } from '../components/OutlineIcon.jsx';
 import '../styles/profile.css';
+import { ProfileSports, IdentitySports } from '../components/ProfileSports.jsx';
+import { DigitalPresence, IdentityLinks } from '../components/DigitalPresence.jsx';
 
 const tabs = ['Información','Contacto','Presencia digital','Deportes','Trayectoria'];
-const emptyCopy = {
-  'Presencia digital':'Aquí podrás añadir tu sitio web y tus perfiles en redes sociales.',
-  Deportes:'Aquí podrás organizar las disciplinas que practicas.',
-  Trayectoria:'Aquí se reunirán tus participaciones y resultados verificados en Invictus.'
-};
 export function Account({user,onSession}) {
   const resource = useData('/profile');
   return <section className="profile-page"><State resource={resource}>{profile =>
-    <ProfileEditor profile={profile} user={user} onSession={onSession}/>
+    <BasicProfile profile={profile} user={user} onSession={onSession}/>
   }</State></section>;
+}
+function BasicProfile({profile,user,onSession}) {
+  const action=useAction();
+  const [values,setValues]=useState({name:profile?.name || '',lastName:profile?.lastName || '',documentNumber:profile?.documentType==='DNI'?profile.documentNumber || '':'',phone:profile?.phone || ''});
+  const change=event=>setValues(current=>({...current,[event.target.name]:event.target.value}));
+  return <div className="profile-content profile-basic"><section className="profile-personal">
+    <h1>Perfil básico</h1><p className="profile-intro">Completa estos datos para crear eventos. Tu DNI y teléfono son privados.</p>
+    <p>@{user.username} · {user.email}</p>
+    <form onSubmit={event=>{event.preventDefault();action.run(async()=>{
+      const saved=await api('/profile','PUT',{...values,documentType:'DNI'});
+      onSession?.({...user,name:saved.name || '',lastName:saved.lastName || ''});
+      if(new URLSearchParams(location.search).get('continuar')==='crear-evento')navigate('/mis-eventos?crear=1');
+    },'Perfil guardado. Ya puedes crear tu evento.');}}>
+      <fieldset disabled={action.busy}><legend className="profile-sr-only">Datos básicos</legend>
+        <div className="profile-grid">
+          <ProfileField label="Nombres" name="name" value={values.name} onChange={change} required maxLength={80} autoComplete="given-name"/>
+          <ProfileField label="Apellidos" name="lastName" value={values.lastName} onChange={change} required maxLength={120} autoComplete="family-name"/>
+          <ProfileField label="DNI" name="documentNumber" value={values.documentNumber} onChange={change} required pattern="[0-9]{8}" maxLength={8} inputMode="numeric"/>
+          <ProfileField label="Teléfono" name="phone" type="tel" value={values.phone} onChange={event=>setValues(current=>({...current,phone:event.target.value.replace(/[\s()-]/g,'')}))} required pattern="\+[1-9][0-9]{6,14}" maxLength={16} autoComplete="tel" placeholder="+51987654321"/>
+        </div>
+        <p className="profile-field-help">Incluye el código de país en el teléfono, por ejemplo +51 para Perú.</p>
+        <div className="profile-actions"><button className="profile-save">{action.busy?'Guardando…':'Guardar perfil'}</button><a className="button secondary" href="/mis-eventos">Mis eventos</a></div>
+      </fieldset><Feedback state={action}/>
+    </form>
+  </section></div>;
 }
 function ProfileField({label,name,value,onChange,children,...props}) {
   const id = 'profile-'+name;
@@ -92,6 +118,8 @@ function ProfileEditor({profile,user,onSession}) {
         <h3>{name}</h3><p className="profile-handle">@{info.username.trim().toLowerCase()}</p>
         {(contact.district || contact.department || saved?.location) && <p className="profile-location"><OutlineIcon name="location"/>{contact.district || contact.department ? location : saved.location}</p>}
         {info.bio && <p className="profile-bio">{info.bio}</p>}
+        <IdentitySports profile={saved}/>
+        <IdentityLinks profile={saved}/>
         <div className="profile-photo-help"><OutlineIcon name="info"/><small>Esta tarjeta muestra una vista previa de tu identidad deportiva.</small></div>
       </aside>
       <div className="profile-main">
@@ -172,7 +200,9 @@ function ProfileEditor({profile,user,onSession}) {
               <div className="profile-actions"><button className="profile-save" disabled={catalog.loading || !!catalog.error}><OutlineIcon name="save"/>{editor.contactAction.busy?'Guardando…':'Guardar contacto'}</button></div>
             </fieldset><Feedback state={editor.contactAction}/>
           </form>}
-          {emptyCopy[label] && <div className="profile-coming-soon"><OutlineIcon name="info"/><h2>{label}</h2><p>{emptyCopy[label]}</p><span>Próximamente</span></div>}
+          {label==='Deportes' && <ProfileSports profile={saved} onSaved={editor.setSaved} disabled={busy}/>}
+          {label==='Presencia digital' && <DigitalPresence profile={saved} onSaved={editor.setSaved} disabled={busy}/>}
+          {label==='Trayectoria' && <Trajectory disabled={busy}/>}
         </section>)}
       </div>
     </div></div>

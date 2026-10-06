@@ -23,7 +23,7 @@ export async function assertFileUnreferenced(db, id) {
     ['team', { OR: [{ logoFileId: id }, { bannerFileId: id }] }], ['teamPaymentMethod', { qrFileId: id }],
     ['manualPayment', { proofFileId: id }], ['paymentRecipient', { qrFileId: id }], ['paymentOperation', { qrFileId: id }],
     ['shopProduct', { imageFileId: id }], ['eventBenefit', { imageFileId: id }],
-    ['event', { OR: [{ primaryImageFileId: id }, { bannerImageFileId: id }, { galleryFileIds: { array_contains: [id] } }] }],
+    ['event', { OR: [{ primaryImageFileId: id }, { bannerImageFileId: id }, { routeImageFileId: id }, { galleryFileIds: { array_contains: [id] } }] }],
     ['participantProfile', { OR: [{ avatarFileId: id }, { bannerFileId: id }, { documentFileIds: { array_contains: [id] } }] }],
     ['eventRegistration', { proofFileId: id }]
   ];

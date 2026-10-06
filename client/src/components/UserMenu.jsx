@@ -1,3 +1,4 @@
+import {visibleCapabilities} from "../app/capabilities.js";
 import { userLabel } from '../helpers/user.js';
 import React, { useEffect, useId, useRef, useState } from "react";
 import { OutlineIcon } from "./OutlineIcon.jsx";
@@ -82,7 +83,7 @@ export default function UserMenu({ user, manager, route, onLogout }) {
       </button>
       <div className="user-menu-panel" id={panelId} hidden={!open}>
         <a
-          href="#/perfil"
+          href="/perfil"
           aria-current={
             route === "/perfil" || route === "/cuenta" ? "page" : undefined
           }
@@ -91,26 +92,27 @@ export default function UserMenu({ user, manager, route, onLogout }) {
           <OutlineIcon name="user"/> Perfil
         </a>
         <a
-          href="#/inscripciones"
+          href="/inscripciones"
           aria-current={route === "/inscripciones" ? "page" : undefined}
           onClick={() => setOpen(false)}
         >
           <OutlineIcon name="calendar"/> Inscripciones
         </a>
-        <a
-          href="#/mis-teams"
+        <a href="/mis-eventos" aria-current={route === "/mis-eventos" ? "page" : undefined} onClick={() => setOpen(false)}><OutlineIcon name="calendar"/> Mis eventos</a>
+        {visibleCapabilities.teams && <a
+          href="/mis-teams"
           aria-current={route.startsWith("/mis-teams") ? "page" : undefined}
           onClick={() => setOpen(false)}
         >
           <OutlineIcon name="users"/> Teams
-        </a>
-        <a
-          href="#/pedidos"
+        </a>}
+        {visibleCapabilities.commerce && <a
+          href="/pedidos"
           aria-current={route === "/pedidos" ? "page" : undefined}
           onClick={() => setOpen(false)}
         >
           <OutlineIcon name="bag"/> Pedidos
-        </a>
+        </a>}
         {manager && (
           <a
             href={import.meta.env.VITE_ADMIN_URL || "http://localhost:5175"}

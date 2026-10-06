@@ -12,12 +12,13 @@ export const categoryInput = z.object({
   capacity: z.number().int().min(1).max(1000000).nullable().default(null), active: z.boolean().default(true),
 }).strict().refine(v => v.minAge === null || v.maxAge === null || v.minAge <= v.maxAge, { message: 'La edad mínima no puede superar la máxima', path: ['maxAge'] });
 
-export const paymentMethodInput = z.object({
+const methodFields = {
   type: z.enum(['YAPE', 'PLIN', 'BANK_TRANSFER', 'CASH']),
   label: z.string().trim().min(1).max(120), phone: text(40), holderName: text(120), bank: text(120),
   accountNumber: text(40), cci: text(20), currency, instructions: text(2000),
   qrFileId: idInput.nullable().default(null), active: z.boolean().default(true),
-}).strict().superRefine((v, ctx) => {
+};
+export const paymentMethodInput = z.object(methodFields).strict().superRefine((v, ctx) => {
   const issue = (path, message) => ctx.addIssue({ code: 'custom', path: [path], message });
   if (['YAPE', 'PLIN'].includes(v.type)) {
     if (!/^9\d{8}$/.test(v.phone || '')) issue('phone', 'Indica un teléfono de 9 dígitos que comience por 9');
@@ -39,3 +40,5 @@ export const paymentMethodInput = z.object({
 }));
 
 export const methodSelectionInput = z.object({ methodIds: z.array(idInput).max(100).refine(ids => new Set(ids).size === ids.length, 'No repitas métodos') }).strict();
+
+export const draftPersonalMethodInput=z.object(methodFields).extend({type:z.enum(['YAPE','PLIN']),currency:z.literal('PEN').default('PEN'),active:z.literal(false)}).strict();

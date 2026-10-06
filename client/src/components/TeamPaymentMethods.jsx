@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Modal } from './Modal.jsx';
 import { Field, Textarea, State, Feedback, Records } from './UI.jsx';
-import { Currency, paymentTypes } from './EventSetup.jsx';
+export const paymentTypes = { YAPE: 'Yape', PLIN: 'Plin', BANK_TRANSFER: 'Transferencia', CASH: 'Efectivo' };
+export function Currency({ value = 'PEN' }) { return <label>Moneda<select name="currency" defaultValue={value}><option value="PEN">Soles (PEN)</option><option value="USD">Dólares (USD)</option></select></label>; }
 import { useAction, useData } from '../hooks/data.js';
 import { api, upload } from '../services/api.js';
 
@@ -19,7 +20,7 @@ export default function TeamPaymentMethods({ team }) {
   </section>;
 }
 
-function MethodForm({ team, method: m, close, saved }) {
+export function MethodForm({ team, method: m, close, saved, endpoint, personal=false }) {
   const action = useAction(), [type, setType] = useState(m.type || 'YAPE'), [qr, setQr] = useState(null);
   const mobile = ['YAPE', 'PLIN'].includes(type);
   return <Modal title={m.id ? 'Editar método de cobro' : 'Nuevo método de cobro'} onClose={close} busy={action.busy}>
@@ -29,10 +30,10 @@ function MethodForm({ team, method: m, close, saved }) {
       action.run(async () => {
         if (qr && mobile) v.qrFileId = (await upload(qr, 'private')).id;
         if (!mobile) v.qrFileId = null;
-        await api(`/teams/${team.id}/payment-methods${m.id ? '/' + m.id : ''}`, m.id ? 'PUT' : 'POST', v); saved();
+        await api((endpoint || `/teams/${team.id}/payment-methods`)+(m.id ? '/' + m.id : ''), m.id ? 'PUT' : 'POST', v); saved();
       });
     }}>
-      <label>Tipo<select value={type} disabled={!!m.id} onChange={e => setType(e.target.value)}>{Object.entries(paymentTypes).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+      <label>Tipo<select value={type} disabled={!!m.id} onChange={e => setType(e.target.value)}>{Object.entries(paymentTypes).filter(([id])=>!personal || ['YAPE','PLIN'].includes(id)).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
       <Field label="Etiqueta (ej. Yape tesorería)" name="label" required maxLength={120} defaultValue={m.label}/>
       {type !== 'CASH' && <Field label="Titular" name="holderName" required maxLength={120} defaultValue={m.holderName || ''}/>}
       {mobile && <Field label="Celular peruano (9 dígitos)" name="phone" type="tel" pattern="9[0-9]{8}" required defaultValue={m.phone || ''}/>}

@@ -26,14 +26,14 @@ export function Registrations() {
         <p className="registrations-count">{items.length} {items.length === 1 ? 'evento registrado' : 'eventos registrados'}{items.length === 100 ? ' (últimos 100)' : ''}</p>
         {items.length ? <Records items={items} columns={[
           {label:'Evento',render:item=><EventIdentity event={item.event}/>},
-          {label:'Team organizador',render:item=>item.event.team?.name || '—'},
+          {label:'Organizador',render:item=>item.event.team?.name || 'Organizador independiente'},
           {label:'Categoría y pago',render:item=><div className="registration-payment">{item.categorySnapshot?.name || 'General'}<p>{categoryPrice({priceCents:item.amountCents || 0,currency:item.currency || 'PEN'})} · {item.paymentInstructionsSnapshot?.label || 'Sin pago'}</p></div>},
           {label:'Fecha',render:item=><div className="registration-date"><OutlineIcon name="calendar"/><span>{date(item.event.startsAt)}</span></div>},
           {label:'Estado',render:item=><><Status value={item.status} label={states[item.status]}/>{item.reviewNote && <p className="registration-review">{item.reviewNote}</p>}</>},
         ]} actions={item=><>
-          {item.event.status === 'PUBLISHED' && item.event.publicSlug && <a className="registration-event-link" href={`#/eventos/${encodeURIComponent(item.event.publicSlug)}`}>Ver evento <span aria-hidden="true">→</span></a>}
+          {item.event.status === 'PUBLISHED' && item.event.publicSlug && <a className="registration-event-link" href={`/eventos/${encodeURIComponent(item.event.publicSlug)}`}>Ver evento <span aria-hidden="true">→</span></a>}
           {item.categoryId && <button className="registration-detail-button" onClick={()=>setSelected(item.id)}>{item.status === 'OBSERVED' ? 'Corregir inscripción' : 'Ver inscripción'}</button>}
-        </>}/> : <div className="empty"><p>Aún no te has inscrito en ningún evento.</p><a className="button" href="#/eventos">Explorar eventos</a></div>}
+        </>}/> : <div className="empty"><p>Aún no te has inscrito en ningún evento.</p><a className="button" href="/eventos">Explorar eventos</a></div>}
       </>}</State>
       <aside className="registrations-note"><OutlineIcon name="info"/><p>Una inscripción confirmada indica que estás registrado en el evento.<br/>La asistencia, resultados y logros se registran por separado.</p></aside>
     </section>

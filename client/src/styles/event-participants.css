@@ -1,0 +1,47 @@
+.event-participants{max-width:1320px}
+.participants-back{display:inline-flex;align-items:center;min-height:44px;color:var(--landing-muted);margin-bottom:20px}
+.participants-back:hover{color:var(--landing-gold-hover)}
+.event-participants .registrations-heading{padding:0;margin-bottom:28px}
+.event-participants .form{max-width:none;margin-top:24px}
+.event-participants .form-grid{grid-template-columns:2fr 1fr 1fr}
+.event-participants .participants-toolbar{display:flex;align-items:flex-end;gap:16px}
+.participants-search{flex:1;min-width:0}
+.participants-search>span{display:flex;position:relative}
+.participants-search input{padding-right:48px}
+.participants-search>span>button{position:absolute;right:1px;top:1px;bottom:1px;padding:8px;min-height:0;border:0;background:transparent}
+.participants-desktop-filters{display:flex;align-items:flex-end;gap:16px}
+.participants-desktop-filters label{min-width:150px;flex:1}
+.participants-desktop-filters>button{white-space:nowrap}
+.event-participants .participants-filter-toggle{display:none}
+.participants-filter-sheet .app-modal{background:var(--landing-surface);color:var(--landing-text);border-color:var(--landing-line)}
+.participants-filter-actions{display:flex;gap:12px;justify-content:flex-end}
+@media(max-width:850px){
+ .event-participants .participants-desktop-filters{display:none}
+ .event-participants .participants-filter-toggle{display:flex;flex-shrink:0;min-width:48px;padding:10px;min-height:44px}
+ .participants-filter-toggle span{background:var(--landing-gold);color:var(--landing-bg);border-radius:50%;font-size:12px;min-width:20px;padding:2px}
+ .participants-filter-sheet .app-modal{position:fixed;inset:auto 0 0;margin:0;width:100%;max-width:none;max-height:85dvh;border-radius:18px 18px 0 0;padding:24px 5vw calc(24px + env(safe-area-inset-bottom));animation:participants-sheet-in .18s ease-out}
+ .participants-filter-actions{flex-wrap:wrap}.participants-filter-actions>button{flex:1;white-space:nowrap}
+}
+@keyframes participants-sheet-in{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.participants-filter-sheet .app-modal{animation:none}}
+.event-participants input,.event-participants select,.event-participants textarea{background:var(--landing-bg);color:var(--landing-text);border-color:var(--landing-line);color-scheme:dark}
+.event-participants button,.event-participants .button{background:var(--landing-gold);color:var(--landing-bg);border-radius:8px}
+.event-participants button:hover,.event-participants .button:hover{background:var(--landing-gold-hover)}
+.event-participants button.secondary,.event-participants .button.secondary{background:var(--landing-bg);color:var(--landing-text);border-color:var(--landing-line)}
+.event-participants button.secondary:hover,.event-participants .button.secondary:hover,.event-participants button.secondary:focus-visible,.event-participants .button.secondary:focus-visible{background:var(--landing-bg);border-color:var(--landing-gold-hover);color:var(--landing-gold-hover)}
+.event-participants button:disabled{cursor:default;opacity:.5}
+.event-participants .records th:first-child{width:26%}
+.event-participants .records th:nth-child(2){width:16%}
+.event-participants .records th:nth-child(3){width:18%}
+.event-participants .records th:nth-child(4){width:23%}
+.event-participants .records th:nth-child(5){width:17%}
+.event-participants .records p{color:var(--landing-muted);line-height:1.6}
+.event-participants .muted,.event-participants small{color:var(--landing-muted)}
+.event-participants details{border:1px solid var(--landing-line);border-radius:8px;padding:14px}
+.event-participants summary{cursor:pointer;color:var(--landing-gold)}
+.event-participants .card,.event-participants .callout{background:var(--landing-bg);border-color:var(--landing-line)}
+.event-participants fieldset{border-color:var(--landing-line)}
+.event-participants .success{background:#003d33;color:#76f7d3;border:1px solid #086652}
+.event-participants .error{background:#361c24;color:#ffc1b6;border:1px solid #7e424b}
+.event-participants nav{justify-content:center;margin-top:24px}
+@media(max-width:850px){.event-participants .form-grid{grid-template-columns:1fr}.event-participants nav{gap:8px}.event-participants nav span{font-size:13px}}

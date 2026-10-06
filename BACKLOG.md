@@ -1,8 +1,43 @@
 # Invictus — continuidad
 
-Actualizado: 2026-09-28.
+Actualizado: 2026-10-03.
+
+## MVP Eventos + Inscripciones — alcance vigente 2026-10-02
+
+El nuevo MVP sustituye el piloto centrado en Teams. Prioridad: reutilizar, simplificar y ocultar; conservar modelos y datos. Organizador personal con Profile básico; participantes sin cuenta; Yape/Plin y revisión manual; eventos informativos del ADMIN existente. Sin reescritura ni borrados destructivos.
+
+- [x] Primer incremento: creación personal sin Team, perfil requerido en servidor (nombres, apellidos, DNI y teléfono), conexión de Mis eventos a pantalla existente. Sin migraciones; permisos de Teams conservados.
+- [x] Perfil mínimo visible: nombres, apellidos, DNI y teléfono en un único formulario; guardado parcial conserva perfil ampliado y módulos existentes.
+- [x] Profile es fuente de identidad para sesión y consumidores existentes; no se copian nombres nuevos a User. Respaldo histórico solo sin Profile y snapshots preservados. Sin migraciones.
+- [x] Publicación/despublicación personal y edición segura: acciones autenticadas, propiedad validada, DRAFT/PUBLISHED existentes, sin borrar inscritos; fecha/zona horaria/disciplina/cupo fijos tras recibir inscripciones. Configuración de pago preservada al editar contenido.
+- [x] Eventos informativos en administración: Event reutilizado con mode MANAGED/INFORMATIONAL, publicOrganizerName y externalUrl; ADMIN crea/edita/publica/despublica sin Team ni cupo. Source conserva semántica anterior. Ficha anónima con CTA externo; inscripciones bloqueadas en backend y edición personal excluida.
+- [x] Categorías y métodos personales Yape/Plin: TeamPaymentMethod admite Team o evento personal; selector y formulario existentes reutilizados, QR privado opcional y receptor en EventRegistrationConfig. Precios en soles, configuración en borradores sin inscritos y confirmación manual reutilizada.
+- [x] Inscripción invitada, comprobantes privados, idempotencia por token y consulta privada de estado; corrección de observaciones y revisión desde consola existente. Migración 031 solo local.
+- [x] Consola existente admite invitados; Home compacto con cards compartidas y búsqueda; Teams/comercio ocultos en navegación, formulario principal y rutas visibles del MVP. Modelos/APIs conservados.
+- [ ] Verificar recorridos completos y compatibilidad histórica.
+
+La publicación personal ya es directa y el perfil visible es básico. Teams conserva revisión; categorías/pagos personales e invitados continúan pendientes. No representa el MVP completo. Verificación: tests/event-teams.test.js 2/2 aprobadas contra invictus_test local (perfil incompleto, propiedad personal, edición, acceso ajeno y regresión Team); npm run build web/admin aprobado. Sin migraciones ni despliegue. Segundo incremento: tests/event-teams.test.js + tests/athlete-profile.test.js 4/4 aprobadas; build web/admin aprobado; recorrido UI scripts/check-mvp-personal-ui.js a 1440/390 px aprobado (perfil, crear, publicar, ficha y despublicar); capturas en .local/screenshots/mvp-*.png. Contraste de consola personal y acciones de perfil corregido; recorrido repetido aprobado y capturas inspeccionadas. Sin migraciones ni despliegue.
+
+## Eventos informativos — incremento 2026-10-02
+
+Migración 028 aditiva aplicada únicamente a invictus e invictus_test locales; Prisma regenerado. Las filas anteriores reciben MANAGED. Sin tablas nuevas ni borrados; creador y administrador siguen usando relaciones existentes, organizador real separado como nombre público. Producción pendiente de migración y despliegue.
+
+Verificación: 5/5 pruebas de eventos/configuración/inscripciones aprobadas; 3/3 de eventos repetidas tras cerrar edición personal; build web/admin aprobado; scripts/check-informational-events-ui.js aprobado con admin y ficha anónima a 1440/390 px, sin desbordamiento ni errores de página. Capturas inspeccionadas en .local/screenshots/informational-*.png. La incidencia de service worker del servidor de prueba se resolvió igualando publicDir al Vite real. Ver [detalle](docs/informational-events.md).
+
+Siguiente incremento: categorías y métodos personales Yape/Plin. Home todavía pendiente; los informativos aparecen en el catálogo público de eventos existente.
+
+## Pagos personales — incremento 2026-10-02
+
+Migraciones 029/030 aplicadas solo a invictus e invictus_test locales; Prisma regenerado. Se extiende team_payment_methods con event_id y team_id opcional (exactamente un ámbito); event_payment_methods conserva claves compuestas históricas y añade referencias simples y validación SQL de ámbito. Sin tablas nuevas, renombrados ni borrados. La restricción histórica del receptor se adapta para eventos con precio general cero y precios por categoría, conservando receptor obligatorio para precio general positivo.
+
+Métodos personales se configuran en Categorías y pagos de Mis eventos, usando MethodForm existente. Solo Yape/Plin en PEN; creación habilita el método en el evento. Los comprobantes, QR, operaciones, snapshots y revisión reutilizan el circuito existente. Editar contenido/cupo antes de inscripciones conserva receptor. Con inscritos, categorías/métodos quedan fijos aun al despublicar. Participantes todavía requieren cuenta; invitados es el siguiente incremento.
+
+Verificación: 6/6 pruebas de eventos/configuración/inscripciones aprobadas (incluyen circuito personal completo, QR privado, aislamiento de métodos y revisión); build web/admin aprobado; scripts/check-personal-payments-ui.js aprobado a 1440/390 px, con creación de categoría/Yape/QR, inscripción PENDING_REVIEW y confirmación CONFIRMED. Capturas en .local/screenshots/personal-*.png. Ver [detalle](docs/personal-event-payments.md). Producción sin migraciones ni despliegue.
 
 ## Estado actual
+2026-10-02: diseño de Trayectoria/CV deportivo, resultados, verificación, badges y credenciales documentado en cuatro releases futuros. Sin implementación ni cambios de alcance del piloto. Ver sección Trayectoria deportiva y credenciales en Pendientes.
+2026-10-02: Deportes implementado con catálogo Discipline existente, edición local, principal opcional e identidad compacta. Relación ParticipantDiscipline con clave compuesta e índice SQL de principal único; JSON histórico preservado como archivo de solo lectura y migración de coincidencias inequívocas. Migración 026 aplicada a invictus e invictus_test locales; Prisma generado. Pruebas mínimas: 2 casos nuevos agrupados + 5 regresiones relevantes, 7/7 aprobados; build:web y recorrido visual 1440/390 px aprobados. Producción y Trayectoria pendientes. Ver [deportes del perfil](docs/profile-sports.md).
+2026-10-02: Presencia digital implementada: sitio web opcional, cinco redes, normalización/validación backend, guardado transaccional parcial e iconos accesibles en identidad. Información y Contacto conservados. Migración 025 aplicada a invictus e invictus_test locales; Prisma generado. Verificación mínima: 2 casos nuevos agrupados + 7 regresiones perfil/auth aprobadas; build:web y recorrido visual 1440/390 px aprobados. Sin dependencias nuevas, perfil público, Deportes ni Trayectoria. Producción pendiente. Ver [presencia digital](docs/digital-presence.md).
 2026-10-01: Contacto muestra User.email en input de solo lectura antes del teléfono, con explicación de que todavía no se puede modificar. No se duplica ni se envía al guardar perfil. Comprobación mínima de valor, readOnly, foco y móvil aprobada.
 2026-10-01: botón circular de cámara junto al borde inferior derecho del avatar; conserva selector, vista previa y guardado de Información. Verificación puntual de apertura del selector y capturas escritorio/móvil aprobada, sin ampliar pruebas.
 2026-10-01: registro mínimo con username, correo y contraseña implementado y verificado localmente. Disponibilidad con debounce 450 ms, unicidad PostgreSQL y contraseña 8–128; login por email, scrypt y sesiones conservados. Migración 023 aplicada a invictus e invictus_test locales; las tres cuentas de desarrollo conservan sus datos y reciben username único. 16 pruebas backend aprobadas, build web/admin aprobado y recorrido puntual de registro/login con capturas 1440/390 px aprobado. Sin ampliar pruebas tras la solicitud del usuario. Producción pendiente de migración/despliegue; ParticipantProfile no se amplió. Ver [registro](docs/user-registration.md).
@@ -48,6 +83,108 @@ Principio: explorar sin sesión; solicitar autenticación al participar. Separar
 - [ ] **Verificación mínima del incremento.** Un recorrido anónimo por los catálogos y fichas, retorno tras autenticación y comprobaciones focalizadas de privacidad y permisos. Revisar escritorio y móvil en las pantallas afectadas; evitar repetir la batería completa sin una regresión que lo justifique.
 
 Orden sugerido: catálogo y ficha de Teams → continuidad de sesión → presentación de próximos eventos → directorio de deportistas. Resolver el punto de acceso en compras antes de cambiar ese flujo.
+
+### Trayectoria deportiva y credenciales — diseño funcional acordado 2026-10-02
+
+Estado: **primera etapa externa implementada; evolución de verificación, badges y credenciales planificada**. Esta actualización es solo documentación/backlog; no autoriza cambios de código, Prisma, migraciones, endpoints ni UI. Mantener Información, Contacto, Presencia digital y Deportes existentes. Este apartado es la única lista de tareas de este incremento; no crea un segundo backlog. Releases orientativos, sin fechas comprometidas.
+
+#### Propósito y conceptos
+
+Trayectoria es el **CV deportivo progresivamente verificable** del participante. Debe servir a usuarios nuevos, amateurs, competitivos, experimentados y de élite: su historia no empieza al registrarse en Invictus. Reunir en una timeline participaciones Invictus e historia externa, distinguiendo lo declarado de lo respaldado.
+
+- **Trayectoria:** vista cronológica agregada de la historia deportiva.
+- **Resultado:** lo ocurrido en una prueba/competencia: tiempo o marca, posiciones general/de categoría, prueba y categoría, según la disciplina.
+- **Badge:** representación visual de un reconocimiento; no almacena toda su información. Evolución visual hacia medalla digital con reconocimiento, evento, año, identidad Invictus y eventualmente identidad del evento.
+- **Credencial:** registro verificable que respalda un resultado/reconocimiento oficial. El badge puede representarla visualmente, pero ambos conservan responsabilidades distintas.
+- **QR:** mecanismo de acceso a la credencial, no la credencial ni un certificado por sí mismo.
+
+**Inscripción ≠ participación acreditada ≠ resultado ≠ badge ≠ credencial.** No derivar Participante/Finisher de una inscripción aceptada, un pago confirmado o el estado COMPLETED sin definir qué hecho deportivo fue acreditado.
+
+#### Dependencias reales y reutilización
+
+- ParticipantProfile identifica el perfil; User identifica la cuenta. ParticipantDiscipline y el catálogo único Discipline permiten contexto/filtros, sin exigir que toda disciplina histórica siga en los deportes que practica actualmente.
+- Event identifica el evento; Event.disciplineId vincula Discipline; Event.teamId vincula Team organizador. EventCategory y los snapshots de EventRegistration aportan categoría y datos históricos de inscripción; no asumir que representan ya la prueba/distancia o el resultado.
+- EventRegistration relaciona Event, User y opcionalmente ParticipantProfile; RegistrationAudit registra decisiones de inscripción. La consulta actual de participaciones devuelve REGISTRATION_CONFIRMED: no acredita asistencia, Finisher ni posición.
+- No existe actualmente un modelo específico de resultado deportivo, asistencia acreditada, badge o credencial deportiva. **PaymentResult es monetario**, no un resultado de competición. Definir el dominio de resultados antes de prometer generación oficial automática.
+- EventRegistration ya contiene participationCode y participationQrDataUrl. Revisar su semántica al diseñar credenciales: no tratarlos como códigos de credencial ni reemplazar el flujo de inscripciones sin analizar compatibilidad. QR de credencial y eventual check-in son usos distintos.
+- Reutilizar StoredFile, propiedad/privacidad y acceso autorizado para evidencias. Comprobantes de pago existentes no pasan a ser pruebas deportivas. Reutilizar Teams y roles como contexto, pero definir expresamente quién certifica resultados y revisa evidencia externa; pertenecer a un Team no basta para certificar.
+- Reutilizar la tarea existente **Directorio y ficha pública de deportistas** para cualquier perfil público: no duplicarla. La verificación pública de una credencial es una superficie separada y no requiere publicar el perfil completo.
+
+#### Principios arquitectónicos y confianza
+
+Dos fuentes: **Invictus**, con datos relacionados del evento/participante y resultados acreditados cuando el dominio exista; **externa**, declarada por el deportista, con datos/evidencias propios. No duplicar evento, participante, disciplina, resultado y organizador en una tabla de trayectoria solo para mostrarlos; preferir relaciones y vistas agregadas. Identificar la fuente desde el MVP, evitar doble representación de una misma participación y reflejar correcciones oficiales en la timeline.
+
+Estados conceptuales, con texto/icono y no solo color: **Declarado por el deportista** (información ingresada por el participante), **Evidencia verificada** (evidencia revisada/validada), **Validado por el organizador** (confirmación de datos deportivos por el responsable de ese evento), **Resultado oficial Invictus** (resultado originado en un evento gestionado directamente mediante Invictus). Son fuentes/orígenes de confianza diferentes, no necesariamente una jerarquía técnica lineal ni estados de pagos o inscripción. Su representación definitiva queda pendiente; pueden requerir distinguir procedencia, validaciones y estado de solicitud. Registrar quién verificó, cuándo, sobre qué evidencia y **qué comprobó**: participación, marca o posición. Una fotografía general del evento no valida automáticamente el resultado de una persona. Distinguir evidencia general del evento y evidencia específica del deportista/resultado.
+
+El organizador (Team/club/organización) respalda el resultado según los permisos futuros; Invictus aporta infraestructura de registro, emisión y verificación. Mostrar ambos: **Organizado por** y **Emitido mediante Invictus**, sin presentar a Invictus como organizador de todo evento.
+
+#### Release 1 — Trayectoria MVP
+
+**Primera entrega implementada (2026-10-02):** historia externa con evento, Discipline y año obligatorios; fecha exacta opcional, detalles y enlace oficial. CRUD privado por titular, cronología por año, filtros y etiqueta «Declarado por el deportista». Modelo ExternalParticipation separado de Event y EventRegistration. Ver [docs/trajectory.md](docs/trajectory.md). No se exige completar trayectoria para registrarse o inscribirse.
+
+- [x] Registrar, editar y eliminar participaciones externas propias.
+- [x] Timeline externa por año y filtros por Discipline, incluyendo referencias históricas inactivas.
+- [ ] Completar Release 1: evidencias mediante archivos, fuente oficial Invictus y timeline conjunta. Los puntos siguientes conservan el alcance completo del release.
+
+
+Objetivo: una historia útil aun para alguien recién llegado a Invictus. Depende del perfil/Discipline existentes y de definir qué participaciones/resultados están realmente acreditados.
+
+- [ ] **Definir modelo y contratos de trayectoria/resultado.** Separar hechos de inscripción, participación y resultado; definir prueba/distancia, categoría, unidades/precisión de marcas y posiciones según competencia. Relaciones/vistas para datos Invictus y almacenamiento propio para participaciones externas. No asumir nombres de modelos aún inexistentes.
+- [x] **Registrar y mantener historia externa.** Edición/eliminación por titular. Campos según corresponda: evento, Discipline, fecha, lugar, prueba/distancia, categoría, posición, resultado/marca/tiempo, descripción opcional, organizador conocido y enlace oficial. Definir mínimos sin volver obligatorio todo el formulario; no crear otro catálogo deportivo.
+- [ ] **Adjuntar evidencia básica.** Enlaces a resultados/publicaciones oficiales, documentos, certificados, actas y fotos. Separar sustento del evento de sustento de participación/resultado; acceso y validación de archivos con el sistema existente. Identificar estos datos como declarados hasta una revisión válida.
+- [ ] **Integrar automáticamente la fuente Invictus.** Relacionar Event → EventRegistration → participación acreditada → resultado deportivo → trayectoria, cuando esas capacidades existan. Mostrar inscripciones solo con su significado real, nunca como resultados/Finisher. Evitar copia manual y actualizar la vista al corregirse el dato oficial.
+- [ ] **Timeline conjunta por año.** Más reciente a más antiguo, con origen/confianza visible desde este release, estados vacíos y diseño responsive/accesible. Ejemplos ilustrativos: Natación · 50 m libre · 2.º · 32.41 s; Running · 21K · 01:48:32; evento histórico declarado. No confundir ejemplos con datos reales ni logros acreditados.
+- [x] **Filtros por Discipline.** Todos y disciplinas presentes en la historia; preservar consulta de disciplinas históricas/inactivas. Reutilizar el catálogo existente.
+
+Criterio de cierre: el usuario puede conservar historia previa y distinguir su procedencia; no se presenta como oficial ningún resultado aún no acreditado. La integración oficial queda condicionada al dominio de resultados, sin bloquear necesariamente el valor de la historia externa.
+
+#### Release 2 — Confianza / verificación
+
+Objetivo: hacer explícito qué datos están respaldados. Depende de evidencias y procedencia del Release 1.
+
+- [ ] **Revisión simple de evidencia externa.** Definir autoridad revisora, permisos, solicitudes y motivos de aprobación/observación/rechazo, sin diseñar moderación excesiva. Registrar revisor, fecha, evidencia y alcance de lo verificado; revisores no validan automáticamente todos los campos por verificar un documento.
+- [ ] **Estados de confianza y cambios posteriores.** Representar Declarado por el deportista, Evidencia verificada, Validado por el organizador y Resultado oficial Invictus con texto/icono y etiquetas claras, sin asumir una secuencia lineal. Separar el estado de la solicitud del respaldo vigente de los datos. Definir qué ediciones invalidan/requieren nueva revisión y cómo se impugna/corrige una verificación. Una revisión de evidencia externa no convierte el evento en gestionado por Invictus.
+
+- [ ] **Validación por el organizador de una participación externa.** Etapa posterior a trayectoria externa, evidencias y representación de estados de confianza; fuera del MVP inicial y previa o coordinada con Release 4. El titular puede solicitar revisión al organizador identificado y autorizado sobre ese evento histórico. Flujo conceptual: deportista registra historia externa → Declarado por el deportista → solicita validación → organizador revisa → confirma (Validado por el organizador), rechaza (solicitud rechazada) o indica datos incorrectos mediante observaciones para corregir y volver a revisar. Rechazar una solicitud no elimina silenciosamente la participación ni la convierte en un resultado oficial. Ejemplo: Carrera 10K Callao 2024, 42:15, 3.º puesto, categoría 40–49; tras confirmación mostrar «✓ Validado por el organizador · Club Atlético Callao · 12 oct 2026». Ejemplo ilustrativo, no datos reales.
+  - **Autoridad acotada al evento:** validar únicamente participación, Discipline, prueba/distancia, categoría, posición y resultado/marca/tiempo correspondientes. No concede edición libre del perfil ni autoridad sobre nombre, documento, teléfono, dirección, bio, redes sociales, otros eventos o información ajena. Reutilizar identidad/cuenta y Teams cuando corresponda, pero verificar el vínculo evento–organizador y el permiso certificador específico; membresía, nombre de organizador en texto libre o similitud del nombre del evento no prueban autoridad. Definir posteriormente cómo identificar y vincular el evento externo con su responsable, sin exigir convertirlo en un Event gestionado por Invictus.
+  - **Trazabilidad de la solicitud y decisión:** conservar evento/participación, campos y valores o versión realmente validados, persona que valida, organización responsable, fecha, estado de solicitud, observaciones y evidencia asociada cuando exista. No reducirlo a verified = true. Aplicar la tarea existente de cambios posteriores para invalidar o revisar respaldos cuando cambien los datos confirmados; preservar historial de decisiones.
+  - **Fuentes distintas:** evento externo/histórico con validación posterior del organizador sigue siendo externo; no equivale a evento gestionado directamente en Invictus con resultado oficial generado en la plataforma.
+
+**Oportunidad de producto, sin compromiso:** una solicitud de validación de historia externa puede acercar a organizadores que aún no gestionan eventos con Invictus: deportista registra carrera histórica → solicita validación → organizador conoce/revisa la solicitud en Invictus → podría gestionar eventos futuros en la plataforma. No compromete invitaciones, notificaciones, captación ni automatizaciones en esta entrega.
+
+Criterio de cierre: cada validación tiene responsable y alcance; cambios en datos verificados no mantienen confianza obsoleta silenciosamente.
+
+#### Release 3 — Badges / medallas digitales
+
+Objetivo: reconocimientos objetivos provenientes principalmente de eventos Invictus; dependen de participación/resultados acreditados, no solo de inscripción.
+
+- [ ] **Modelo de reconocimiento y reglas.** Relacionar badge con resultado/evento/participante y emisor. Generación idempotente por hechos acreditados y reglas del evento, evitando reconocimientos duplicados o arbitrarios.
+- [ ] **Participante y Finisher.** Definir evidencia objetiva de participación y finalización. No otorgarlos automáticamente por CONFIRMED/COMPLETED sin el respaldo deportivo correspondiente.
+- [ ] **Podios y campeón de categoría.** Primer, segundo y tercer puesto, y campeón cuando aplique. Especificar si la posición es general o de categoría y el tratamiento de empates, descalificaciones y correcciones antes de generar badges.
+- [ ] **Medalla digital.** Diseño con reconocimiento, evento/año e identidad visual; separar presentación de los datos verificables. Accesibilidad y estado vigente/revocado textual.
+
+Dependencia entre releases: en Release 3 el badge queda respaldado por el **resultado oficial**; Release 4 añade credencial verificable y vínculo Badge ↔ Credencial. No afirmar que hay credenciales o QR verificables antes de implementarlos. Revisar/corregir reconocimientos derivados si cambia el resultado.
+
+#### Release 4 — Credenciales deportivas verificables
+
+Objetivo: verificar y compartir un reconocimiento sin publicar todo el perfil. Depende de resultados/reglas oficiales y decisiones de publicación.
+
+- [ ] **Modelo y emisión de credencial.** Relación clara con resultado oficial/reconocimiento. Mostrar datos permitidos: deportista/username, evento, Discipline, prueba/distancia, categoría, resultado/marca/tiempo, posiciones general/de categoría, reconocimiento, fecha/lugar del evento, organizador, emisor, fecha de emisión, identificador único y estado. Definir contenido mínimo y permisos de emisión. Evaluar participaciones externas **Validadas por el organizador** como candidatas, condicionado a la validación y trazabilidad del Release 2; no toda confirmación genera automáticamente una credencial. Reglas de elegibilidad/emisión y relación con esa validación quedan pendientes, preservando la distinción frente al resultado oficial Invictus. No duplicar datos solo para renderizar, y evaluar versiones/snapshots cuando sean necesarios para auditoría.
+- [ ] **Código y página pública de verificación.** Acceso sin sesión por código único; formato de ruta pendiente (/v/{verificationCode} es solo conceptual). Evitar códigos predecibles/enumerables. Reutilizar serializers públicos explícitos; no divulgar documentos, contacto privado ni historial completo. Definir publicación/consentimiento y retirada de datos sin romper el registro de revocación.
+- [ ] **QR de URL permanente Invictus.** Apunta a la página de verificación, nunca directamente a PDF, imagen, archivo S3 ni resultado estático. Estabilidad del código/URL ante correcciones; diseño/exportación sin fijar aún proveedor o librería.
+- [ ] **Sustentos públicos/privados.** Evidencias oficiales, actas, documentos, fotos y enlaces; distinguir evento y resultado individual. Definir qué se muestra públicamente, redactar datos sensibles y conservar acceso autorizado a archivos privados.
+- [ ] **Correcciones y auditoría obligatorias.** Versionar cambios, actor, fecha y motivo; ejemplo 47:35 → 47:32. La credencial y trayectoria muestran resultado vigente sin cambiar QR; actualizar los reconocimientos derivados coherentemente. No dejar la trazabilidad condicionada a conveniencia técnica.
+- [ ] **Revocación/invalidez y consulta permanente.** Conceptos válida, corregida y revocada/inválida; definir transición y relación entre validez y revisión. La URL no desaparece silenciosamente y muestra la revocación con claridad para que un QR antiguo no aparente vigencia.
+- [ ] **Badges destacados.** Selección por el titular para Tu identidad y, cuando exista, su perfil público. Resumen compacto, no toda la timeline. Cantidad, orden y tratamiento de badges corregidos/revocados pendientes de UX.
+- [ ] **Compartir credencial.** Inicialmente enlace y QR independientes del perfil completo. Imagen compartible, PDF/certificado, LinkedIn y otras redes solo como evaluación posterior, sin compromiso de integraciones.
+
+#### Decisiones pendientes, conflictos y verificación futura
+
+- Pendientes: modelo de prueba/resultado y participación acreditada; autoridad del organizador/revisor externo y vínculo verificable con el evento histórico; representación no lineal de fuentes de confianza y estados de solicitud; elegibilidad de participaciones validadas para credenciales; formatos de marca/unidades; reglas de premios/empates; mínimos del formulario externo; prevención de duplicados entre fuentes; visibilidad/consentimiento; formato de código/ruta; número de badges destacados; necesidad de snapshots de emisión.
+- Conflicto de alcance resuelto: resultados/cronometraje/certificados siguen fuera del **piloto vigente** y de esta tarea documental. Estos releases son futuro planificado; no modifican las exclusiones históricas ni marcan como implementadas funciones de resultados. El QR de credencial no incorpora check-in.
+- Reutilización: perfil existente, Deportes/Discipline, Teams/EventCategory, inscripción y auditoría, archivos y la tarea ya existente de perfil público. No se crean tareas paralelas para reconstruirlos.
+- Verificación futura proporcional: casos agrupados de procedencia, propiedad, conservación de datos, evidencia/alcance, correcciones, reglas de badges, emisión idempotente, privacidad y QR/revocación estable; un recorrido visual puntual por release. Mantener la preferencia de pruebas mínimas sin omitir integridad ni autorización.
+- Primera etapa externa implementada; la integración con resultados oficiales y las siguientes releases permanecen pendientes.
 
 ### Teams y primer evento real — plan pendiente
 
@@ -134,3 +271,25 @@ Frontend implementado. `npm run build` compila web y admin. Prueba visual altern
 
 
 Perfil del deportista etapa 1 (2026-10-01): Información/Contacto funcionales con guardados independientes, borradores entre pestañas y estados vacíos en Presencia digital/Deportes/Trayectoria. Nombres del perfil como fuente de verdad; proyección temporal en User para compatibilidad con Teams/admin/inscripciones. location histórico preservado sin inferir UBIGEO. Catálogo local de 1892 distritos, teléfono E.164 y banner/avatar con files existente. Migración 20261001024_athlete_profile aplicada en invictus e invictus_test locales; Prisma validado/generado. Pruebas mínimas: tanda de 14/14 aprobadas, casos de perfil e integración antigua repetidos solo tras ajustes puntuales aprobados; build web/admin y E2E real 1440/390 sin overflow aprobados. Capturas inspeccionadas. Ver docs/athlete-profile.md. Pendientes: prueba manual del usuario, despliegue de migración y siguientes tres etapas; S3 reutilizado sin prueba de producción.
+
+## Ajustes acordados de navegación pública — 2026-10-03
+
+Catálogo único, buscador fuera del hero, Mis eventos solo en menú de cuenta, creación con continuidad de acceso/perfil, rutas públicas History API y acciones con iconos/tooltips. Sin migraciones. Detalles y requisito de hosting en docs/public-navigation.md.
+
+## Editor personal de eventos — 2026-10-03
+
+Página de tres pasos, preview de imagen/QR, borrador mínimo, categorías/precios, Yape/Plin y revisión/publicación. Migraciones locales 032–033 sin pérdida de datos. Un recorrido funcional aprobado; revisión visual a cargo del usuario. Detalle: docs/event-editor.md.
+
+## Reglas de ciclo de vida personal — 2026-10-03
+
+Bloqueo de despublicación con inscritos y de publicación/despublicación desde el inicio; condiciones históricas congeladas, contenido y gestión de inscritos disponibles. Etiquetas de historial sin nuevos estados. Ediciones parciales conservan fecha. Un test dirigido aprobado; detalle docs/personal-event-lifecycle.md.
+
+### 2026-10-05 · Logística opcional de eventos
+- Completado formulario, backend y detalle: concentración, kits y ruta; cupo movido al paso 2 y revisión con enlaces a editar.
+- Reutilizados Event, startsAt, StoredFile, ImagePicker, endpoints, validación de propiedad y transacciones existentes; sin tablas nuevas.
+- Migración aditiva 034 aplicada en ambas bases locales. Pendiente desplegarla en otros entornos.
+- Dos pruebas integrales dirigidas aprobadas y build web/admin aprobado. Visuales a cargo del usuario. Detalles en docs/event-logistics.md.
+
+- Precisión de horarios: fecha única, ubicación compartida, concentración sin required ni etiqueta opcional y salida; sin migración adicional. Prueba dirigida cubre concentración vacía, día distinto y hora posterior.
+
+- Kits: fechas desde/hasta, horario diario desde/hasta, lugar único e instrucciones; más espacio bajo casilla. Migración aditiva 035 con traslado de datos aplicada en ambas bases locales. Prueba integral dirigida y build web aprobados.

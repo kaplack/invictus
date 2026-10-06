@@ -1,6 +1,12 @@
+import {currentRoute, navigate, interceptNavigation} from '../services/navigation.js';
+import {visibleCapabilities} from "./capabilities.js";
+import {GuestRegistration} from '../components/GuestRegistration.jsx';
 import PublicTeams from "../pages/PublicTeams.jsx";
 import MainNavigation from "../components/MainNavigation.jsx";
 import Teams from "../pages/TeamSpace.jsx";
+import EventEditor from '../pages/EventEditor.jsx';
+import EventParticipants from '../pages/EventParticipants.jsx';
+import MyEvents from "../pages/MyEvents.jsx";
 import UserMenu from "../components/UserMenu.jsx";
 import React, { useState, useEffect } from "react";
 import { api } from "../services/api.js";
@@ -14,7 +20,7 @@ import {
 } from "../pages/Account.jsx";
 export default function Application() {
   const [route, setRoute] = useState(
-      location.hash.slice(1) || location.pathname,
+      currentRoute(),
     ),
     [user, setUser] = useState(null),
     [loading, setLoading] = useState(true),
@@ -22,17 +28,19 @@ export default function Application() {
     [error, setError] = useState("");
   useEffect(() => {
     const fn = () => {
-      setRoute(location.hash.slice(1) || location.pathname);
+      setRoute(currentRoute());
       window.scrollTo(0, 0);
     };
     window.addEventListener("hashchange", fn);
+    window.addEventListener("popstate", fn);
+    document.addEventListener("click", interceptNavigation);
     api("/auth/session")
       .then((r) => setUser(r.user))
       .catch((e) => {
         if (e.status !== 401) setError(e.message);
       })
       .finally(() => setLoading(false));
-    return () => window.removeEventListener("hashchange", fn);
+    return () => {window.removeEventListener("hashchange", fn);window.removeEventListener("popstate", fn);document.removeEventListener("click", interceptNavigation);};
   }, []);
   async function logout() {
     try {
@@ -40,7 +48,7 @@ export default function Application() {
       setUser(null);
       setCart(null);
       sessionStorage.removeItem("checkout-key");
-      location.hash = "/";
+      navigate("/");
     } catch (e) {
       setError(e.message);
     }
@@ -57,7 +65,7 @@ export default function Application() {
       "/mis-eventos",
       "/carrito",
       "/pedidos",
-    ].includes(route) || route === '/mis-teams' || route.startsWith('/mis-teams/');
+    ].includes(route) || route.startsWith('/mis-eventos/') || route === '/mis-teams' || route.startsWith('/mis-teams/');
   if (loading)
     return (
       <div className="empty" role="status">
@@ -65,46 +73,52 @@ export default function Application() {
       </div>
     );
   let page;
-  if (protectedRoute && !user) page = <Login onSession={setUser} redirect={protectedRoute ? route : "/cuenta"} />;
+  const hiddenRoute=(!visibleCapabilities.teams && (route==='/teams'||route.startsWith('/teams/')||route==='/mis-teams'||route.startsWith('/mis-teams/'))) || (!visibleCapabilities.commerce && ['/tienda','/cotizar','/carrito','/pedidos'].includes(route)) || route==='/deportistas';
+  if(hiddenRoute) page=<p className="empty">Esta sección todavía no está disponible. <a href="/eventos">Ver eventos</a></p>;
+  else if (protectedRoute && !user) page = <Login onSession={setUser} redirect={protectedRoute ? route + location.search : "/cuenta"} />;
   else if (route === "/") page = <Home />;
   else if (route === "/teams" || route.startsWith("/teams/")) page = <PublicTeams key={route} id={route.split("/")[2]} />;
   else if (route === "/acceso") page = <Login onSession={setUser} />;
   else if (route === "/eventos" || route.startsWith("/eventos/"))
     page = <Events key={route} slug={route.split("/")[2]} user={user} />;
   else if (route === "/deportistas")
-    page = <section className="heading"><p className="eyebrow">COMUNIDAD INVICTUS</p><h1>Deportistas</h1><span className="badge">Próximamente</span><p>Estamos preparando este espacio para la comunidad deportiva.</p><a className="button secondary" href="#/eventos">Explorar eventos</a></section>;
+    page = <section className="heading"><p className="eyebrow">COMUNIDAD INVICTUS</p><h1>Deportistas</h1><span className="badge">Próximamente</span><p>Estamos preparando este espacio para la comunidad deportiva.</p><a className="button secondary" href="/eventos">Explorar eventos</a></section>;
   else if (route === "/tienda")
     page = <Shop user={user} cart={cart} setCart={setCart} />;
   else if (route === "/cotizar") page = <Quote />;
   else if (route === "/cuenta" || route === "/perfil")
     page = <Account user={user} onSession={setUser} />;
+  else if (route.startsWith('/inscripcion/')) page = <GuestRegistration key={route} token={route.split('/')[2]}/>;
   else if (route === "/inscripciones") page = <Registrations />;
-  else if (route === "/mis-eventos") page = <Teams user={user} />;
+  else if (route === "/mis-eventos/nuevo") page = <EventEditor key="new"/>;
+  else if (/^\/mis-eventos\/[^/]+\/editar$/.test(route)) page = <EventEditor key={route} id={route.split("/")[2]}/>;
+  else if (/^\/mis-eventos\/[^/]+\/inscripciones$/.test(route)) page = <EventParticipants key={route} id={route.split("/")[2]}/>;
+  else if (route === "/mis-eventos") page = <MyEvents />;
   else if (route === '/mis-teams' || route.startsWith('/mis-teams/')) page = <Teams id={route.split('/')[2]} user={user} section={route.split('/')[3] || 'inicio'} tab={route.split('/')[4]} onLogout={logout} sessionError={error}/>;
   else if (route === "/carrito") page = <Cart cart={cart} setCart={setCart} />;
   else if (route === "/pedidos") page = <Orders />;
   else
     page = (
       <p className="empty">
-        Página no encontrada. <a href="#/">Volver al inicio</a>
+        Página no encontrada. <a href="/">Volver al inicio</a>
       </p>
     );
-  if (user && route.startsWith("/mis-teams/")) return page;
+  if (visibleCapabilities.teams && user && route.startsWith("/mis-teams/")) return page;
   return (
-    <div className={(route === "/mis-teams" || route === "/mis-eventos" || route === "/pedidos" || route === "/inscripciones" || route === "/perfil" || route === "/cuenta" || route === "/acceso" || (protectedRoute && !user) || route === "/" || route === "/teams" || route.startsWith("/teams/") || route === "/eventos" || route.startsWith("/eventos/") || route === "/tienda") ? "landing-shell" : undefined}>
+    <div className={(route === "/mis-teams" || route.startsWith("/mis-eventos") || route === "/pedidos" || route === "/inscripciones" || route === "/perfil" || route === "/cuenta" || route === "/acceso" || (protectedRoute && !user) || route === "/" || route === "/teams" || route.startsWith("/teams/") || route === "/eventos" || route.startsWith("/eventos/") || route === "/tienda") ? "landing-shell" : undefined}>
       <a className="skip" href="#main">
         Ir al contenido
       </a>
       <header className="site-header">
-        <a className="brand" href="#/">
+        <a className="brand" href="/">
           {" "}
           INVICTUS
         </a>
         <MainNavigation route={route} />
         <div className="account-nav">
-          <a
+          {visibleCapabilities.commerce && <a
             className="cart-link"
-            href="#/carrito"
+            href="/carrito"
             aria-label={
               cartCount
                 ? `Carrito, ${cartCount} ${cartCount === 1 ? "producto" : "productos"}`
@@ -133,7 +147,7 @@ export default function Application() {
                 {cartCount > 99 ? "99+" : cartCount}
               </span>
             )}
-          </a>
+          </a>}
           {user ? (
             <UserMenu
               user={user}
@@ -144,7 +158,7 @@ export default function Application() {
           ) : (
             <a
               className="button small login-link"
-              href="#/acceso"
+              href="/acceso"
               aria-label="Ingresar"
               title="Ingresar"
             >
@@ -177,11 +191,11 @@ export default function Application() {
         {page}
       </main>
       <footer>
-        <a className="brand" href="#/">
+        <a className="brand" href="/">
           INVICTUS
         </a>
         <p>Cada evento termina. El esfuerzo permanece.</p>
-        <span>Eventos · Comunidad · Reconocimientos</span>
+        <span>Eventos · Inscripciones</span>
       </footer>
     </div>
   );

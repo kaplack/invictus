@@ -1,0 +1,53 @@
+import { chromium, expect } from '@playwright/test';
+import { createCategoryRegistrations } from '../server/registrations/service.js';
+import assert from 'node:assert/strict';
+const id='12345678-1234-4234-8234-123456789012';
+let where;
+const service=createCategoryRegistrations({database:{eventRegistration:{findUnique:async input=>{where=input;return {id:'r1',status:'CONFIRMED'};}}}});
+assert.equal((await service.mine({id:'u1'},id)).status,'CONFIRMED');
+assert.deepEqual(where.where,{eventId_userId:{eventId:id,userId:'u1'}});
+await assert.rejects(()=>service.mine({id:'u1'},'bad'));
+const browser=await chromium.launch({channel:'msedge',headless:true});
+try {
+const page=await browser.newPage({viewport:{width:1440,height:1000}});
+const event={id,title:'Nado de confraternidad - Tiburoncines',status:'PUBLISHED',mode:'PERSONAL',startsAt:'2027-11-28T13:00:00Z',venue:'La Punta',publicSlug:'test-event',description:'Un evento de prueba',categories:[]};
+let status='CONFIRMED',requests=[];
+await page.route('**/api/**',async route=>{const url=new URL(route.request().url());let data;
+if(url.pathname.endsWith('/auth/session'))data={user:{id:'u1',name:'Alan',role:'USER'}};
+else if(url.pathname.endsWith('/my-registration'))data=status?{id:'r1',status}:null;
+else if(url.pathname.endsWith('/registrations')){const offset=Number(url.searchParams.get('offset')||0);requests.push(url.search);const total=url.searchParams.get('q')?1:50;data={items:Array.from({length:Math.min(20,total-offset)},(_,i)=>({id:'r'+(offset+i),user:{name:'Participante '+(offset+i+1),email:'p'+i+'@example.test'},status:'CONFIRMED'})),total,nextOffset:offset+20<total?offset+20:null,summary:{occupied:50,capacity:50,statuses:{CONFIRMED:50}},categories:[]};}
+else data=event;
+await route.fulfill({json:data});});
+await page.goto('http://localhost:5173/eventos/test-event');
+await expect(page.getByRole('link',{name:'Ya estás inscrito',exact:true})).toHaveCount(2);
+status='PENDING_REVIEW';await page.reload();await expect(page.getByRole('link',{name:'Inscripción pendiente',exact:true})).toHaveCount(2);
+status=null;await page.reload();await expect(page.getByRole('button',{name:'Inscribirme',exact:true})).toHaveCount(2);
+await page.goto('http://localhost:5173/mis-eventos/'+id+'/inscripciones');
+await expect(page.getByRole('heading',{name:'Inscripciones',exact:true})).toBeVisible();
+await expect(page.locator('table tbody tr')).toHaveCount(20);
+await page.getByRole('button',{name:'Siguiente',exact:true}).click();await expect(page.getByText('Página 2 de 3 · 20 por página')).toBeVisible();
+await page.getByRole('button',{name:'Siguiente',exact:true}).click();await expect(page.locator('table tbody tr')).toHaveCount(10);
+await expect(page.getByRole('button',{name:'Siguiente',exact:true})).toBeDisabled();
+await page.getByLabel('Buscar participante o correo').fill('Participante');await page.getByRole('button',{name:'Aplicar filtros'}).click();await expect(page.locator('table tbody tr')).toHaveCount(1);
+assert.ok(requests.at(-1).includes('offset=0'));
+await page.setViewportSize({width:390,height:844});await expect(page.locator('.mobile-records')).toBeVisible();
+assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+assert.equal(await page.locator('input[name=q]').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(6, 19, 31)');
+await page.getByRole('button',{name:'Filtros',exact:true}).click();
+const dialog=page.getByRole('dialog');await expect(dialog).toBeVisible();
+await dialog.getByRole('combobox').nth(1).selectOption('CONFIRMED');
+await dialog.getByRole('button',{name:'Cerrar',exact:true}).click();
+await page.getByRole('button',{name:'Filtros',exact:true}).click();
+await expect(dialog.getByRole('combobox').nth(1)).toHaveValue('');
+await dialog.getByRole('combobox').nth(1).selectOption('CONFIRMED');
+await dialog.getByRole('button',{name:'Aplicar filtros',exact:true}).click();
+await expect(dialog).toHaveCount(0);await expect(page.getByRole('button',{name:'Filtros, 1 activos'})).toBeVisible();
+assert.ok(requests.at(-1).includes('status=CONFIRMED'));
+await page.getByRole('button',{name:'Filtros, 1 activos'}).click();
+await dialog.getByRole('button',{name:'Limpiar filtros'}).click();
+await dialog.getByRole('button',{name:'Aplicar filtros',exact:true}).click();
+await expect(page.getByRole('button',{name:'Filtros',exact:true})).toBeVisible();
+assert.ok(!requests.at(-1).includes('status='));
+console.log('Passed: mobile filter sheet apply, discard, clear and active count;  own registration query, confirmed/pending/unregistered buttons, 50 participants, pagination, filters, mobile layout and navy fields.');
+} finally {await browser.close();}
+

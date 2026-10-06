@@ -1,7 +1,7 @@
 import React from 'react';
 import '../styles/status-chip.css';
 export const money=n=>new Intl.NumberFormat('es-PE',{style:'currency',currency:'PEN'}).format(n/100);
-export const date=d=>new Date(d).toLocaleDateString('es-PE',{day:'numeric',month:'long',year:'numeric'});
+export const date=d=>!d?'Fecha por definir':new Date(d).toLocaleDateString('es-PE',{day:'numeric',month:'long',year:'numeric'});
 export const labels={PENDING_REVIEW:'En revisión por Invictus',CHANGES_REQUESTED:'Cambios solicitados',APPROVED:'Aprobado',CONFIRMED:'Inscripción confirmada',PENDING:'Pendiente',PUBLISHED:'Publicado',DRAFT:'Borrador',CLOSED:'Cerrado',FINISHED:'Finalizado',CANCELLED:'Cancelado',COMPLETED:'Completado',REJECTED:'Rechazado',OBSERVED:'Requiere corrección',pending:'Pendiente',accepted:'Aceptado',completed:'Completado',cancelled:'Cancelado',verified:'Pago verificado',pending_review:'En revisión',rejected:'Rechazado',RECEIVED:'Recibida'};
 const statusTones = { DRAFT:'warning', PENDING:'warning', OBSERVED:'warning', CHANGES_REQUESTED:'warning', PENDING_REVIEW:'info', ACCEPTED:'info', RECEIVED:'info', PUBLISHED:'success', APPROVED:'success', CONFIRMED:'success', VERIFIED:'success', COMPLETED:'success', FINISHED:'success', REJECTED:'danger', CANCELLED:'danger', CLOSED:'neutral' };
 export function Status({value,label}){return <span className="status-chip" data-status={value} data-tone={statusTones[String(value).toUpperCase()] || 'neutral'}>{label || labels[value] || value || 'Sin estado'}</span>}

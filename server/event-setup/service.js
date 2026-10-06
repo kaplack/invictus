@@ -1,13 +1,14 @@
+import {personalLifecycle} from './lifecycle.js';
 import { randomUUID } from 'node:crypto';
 import { AppError } from '@base/usuarios-acceso';
 import { runCoordinated, assertLiveFiles } from '@base/usuarios-acceso/contracts';
 import { lockManagedEvent, requireEventManager, requireTeamManager } from '../teams/event-access.js';
-import { categoryInput, paymentMethodInput, methodSelectionInput, idInput } from './validation.js';
+import { categoryInput, paymentMethodInput, draftPersonalMethodInput, methodSelectionInput, idInput } from './validation.js';
 
-export const methodSummary = { id: true, teamId: true, type: true, label: true, currency: true, active: true };
+export const methodSummary = { id: true, teamId: true, eventId: true, type: true, label: true, currency: true, active: true };
 const conflict = message => new AppError(message, 409, 'SETUP_CONFLICT');
 const parse = (schema, input) => { const result = schema.safeParse(input); if (!result.success) throw new AppError(result.error.issues[0].message, 400, 'INVALID_INPUT'); return result.data; };
-export const setupEditable = event => event.status === 'DRAFT' && ['DRAFT', 'CHANGES_REQUESTED'].includes(event.reviewStatus);
+export const setupEditable = event => (event.teamId || !personalLifecycle(event).started) && event.status === 'DRAFT' && ['DRAFT', 'CHANGES_REQUESTED'].includes(event.reviewStatus);
 
 export async function saveEventDiscipline(tx, event, disciplineId) {
   if (disciplineId === undefined || disciplineId === event.disciplineId) return;
@@ -20,7 +21,16 @@ export async function saveEventDiscipline(tx, event, disciplineId) {
   await tx.event.update({ where: { id: event.id }, data: { disciplineId } });
 }
 
+export function assertEventLogisticsReady(event) {
+ if(event.meetingAt&&event.startsAt){
+  const day=value=>new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit',timeZone:event.timeZone||'America/Lima'}).format(new Date(value));
+  if(day(event.meetingAt)!==day(event.startsAt))throw conflict('La concentración y la salida deben compartir la fecha del evento');
+ }
+ if(event.meetingAt&&event.startsAt&&new Date(event.meetingAt)>new Date(event.startsAt))throw conflict('La concentración debe ser antes o al inicio del evento');
+ if(event.kitEnabled&&(!event.kitDateFrom||!event.kitDateTo||!event.kitTimeFrom||!event.kitTimeTo||!event.kitVenue?.trim()))throw conflict('Completa fechas, horario diario y lugar de entrega de kits');
+}
 export async function assertEventSetupReady(tx, event) {
+ assertEventLogisticsReady(event);
   const categories = await tx.eventCategory.findMany({ where: { eventId: event.id } });
   if (!categories.length) return; // Historical free enrollment is unchanged.
   const active = categories.filter(c => c.active);
@@ -48,7 +58,7 @@ export function createEventSetupService({ database: db, files }) {
   }
   async function editableEvent(tx, actor, eventId) {
     const event = await lockManagedEvent(tx, actor, eventId);
-    if (!event.teamId) throw conflict('Asigna el evento a un Team antes de configurar categorías y pagos');
+    if(event.mode==='INFORMATIONAL') throw conflict('Los eventos informativos no reciben inscripciones');
     if (!setupEditable(event)) throw conflict('Solo puedes configurar un borrador o un evento devuelto con observaciones');
     if (await tx.eventRegistration.count({ where: { eventId } })) throw conflict('La configuración queda fija tras la primera inscripción');
     return event;
@@ -62,19 +72,20 @@ export function createEventSetupService({ database: db, files }) {
       const [categories, selected, available, registrations] = await Promise.all([
         db.eventCategory.findMany({ where: { eventId: id }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] }),
         db.eventPaymentMethod.findMany({ where: { eventId: id }, include: { method: { select: methodSummary } } }),
-        event.teamId ? db.teamPaymentMethod.findMany({ where: { teamId: event.teamId }, select: methodSummary, orderBy: { createdAt: 'asc' } }) : [],
+        event.teamId ? db.teamPaymentMethod.findMany({ where: { teamId: event.teamId }, select: methodSummary, orderBy: { createdAt: 'asc' } }) : canManage ? db.teamPaymentMethod.findMany({where:{eventId:id},orderBy:{createdAt:'asc'}}) : [],
         db.eventRegistration.count({ where: { eventId: id } }),
       ]);
       // A moderator only sees methods selected for this proposal, not the Team's full inventory.
       return { eventId: id, teamId: event.teamId, disciplineId: event.disciplineId, categories,
         methodIds: selected.map(m => m.methodId), methods: canManage ? available : selected.map(m => m.method),
-        editable: !!event.teamId && canManage && setupEditable(event) && registrations === 0 };
+        hasRegistrations: registrations>0, editable: event.mode!=='INFORMATIONAL' && canManage && setupEditable(event) && registrations === 0 };
     },
     async category(actor, eventId, categoryId, raw) {
       const data = parse(categoryInput, raw);
       if (categoryId) idInput.parse(categoryId);
       return runCoordinated(db, async tx => {
-        await editableEvent(tx, actor, eventId);
+        const event=await editableEvent(tx, actor, eventId);
+        if(!event.teamId && data.currency!=='PEN') throw new AppError('Las categorías personales utilizan soles',400,'INVALID_CURRENCY');
         if (categoryId && !await tx.eventCategory.findFirst({ where: { id: categoryId, eventId } })) throw new AppError('Categoría no disponible', 404, 'CATEGORY_NOT_FOUND');
         if (await tx.eventCategory.findFirst({ where: { eventId, name: { equals: data.name, mode: 'insensitive' }, ...(categoryId ? { id: { not: categoryId } } : {}) } })) throw conflict('Ya existe una categoría con ese nombre en el evento');
         if (!categoryId && await tx.eventCategory.count({ where: { eventId } }) >= 100) throw conflict('El evento alcanzó el límite de 100 categorías');
@@ -85,11 +96,35 @@ export function createEventSetupService({ database: db, files }) {
       const { methodIds } = parse(methodSelectionInput, raw);
       return runCoordinated(db, async tx => {
         const event = await editableEvent(tx, actor, eventId);
-        if (await tx.teamPaymentMethod.count({ where: { id: { in: methodIds }, teamId: event.teamId, active: true } }) !== methodIds.length)
-          throw new AppError('Selecciona únicamente métodos activos del Team organizador', 400, 'INVALID_PAYMENT_METHOD');
+        if (await tx.teamPaymentMethod.count({ where: { id: { in: methodIds }, ...(event.teamId?{teamId:event.teamId}:{eventId:event.id,teamId:null}), active: true } }) !== methodIds.length)
+          throw new AppError('Selecciona únicamente métodos activos de este organizador', 400, 'INVALID_PAYMENT_METHOD');
         await tx.eventPaymentMethod.deleteMany({ where: { eventId } });
         if (methodIds.length) await tx.eventPaymentMethod.createMany({ data: methodIds.map(methodId => ({ eventId, methodId, teamId: event.teamId })) });
         return { methodIds };
+      });
+    },
+    async personalMethod(actor,eventId,methodId,raw) {
+      const data=parse(raw.active===false?draftPersonalMethodInput:paymentMethodInput,raw);
+      if(!['YAPE','PLIN'].includes(data.type))throw new AppError('Selecciona Yape o Plin',400,'INVALID_PAYMENT_METHOD');
+      if(methodId)idInput.parse(methodId);
+      return runCoordinated(db,async tx=>{
+        const event=await editableEvent(tx,actor,eventId);
+        if(event.teamId)throw conflict('Configura las cuentas desde el Team');
+        const previous=methodId?await tx.teamPaymentMethod.findFirst({where:{id:methodId,eventId,teamId:null}}):null;
+        if(methodId&&!previous)throw new AppError('Método no disponible',404,'METHOD_NOT_FOUND');
+        if(previous&&previous.type!==data.type)throw conflict('Crea otro método para cambiar el tipo de pago');
+        if(!methodId&&await tx.teamPaymentMethod.count({where:{eventId}})>=100)throw conflict('Límite de métodos alcanzado');
+        if(data.qrFileId&&data.qrFileId!==previous?.qrFileId)await files.assertOwned(data.qrFileId,actor.id,{visibility:'private',image:true});
+        await assertLiveFiles(tx,[data.qrFileId]);
+        const configuration=await tx.eventRegistrationConfig.findUnique({where:{eventId}});
+        if(!configuration)throw conflict('Configura el evento primero');
+        if(!configuration.paymentRecipientId&&data.active){
+          const recipient=await tx.paymentRecipient.create({data:{id:randomUUID(),name:data.holderName}});
+          await tx.eventRegistrationConfig.update({where:{eventId},data:{paymentRecipientId:recipient.id}});
+        }
+        const saved=methodId?await tx.teamPaymentMethod.update({where:{id:methodId},data}):await tx.teamPaymentMethod.create({data:{...data,eventId,teamId:null}});
+        if(!methodId&&data.active)await tx.eventPaymentMethod.create({data:{eventId,methodId:saved.id,teamId:null}});
+        return saved;
       });
     },
     async methods(actor, teamId) {

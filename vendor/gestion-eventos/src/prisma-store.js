@@ -1,12 +1,14 @@
 import { runCoordinated, assertLiveFiles } from '@base/usuarios-acceso/contracts';
 import { EventError } from './errors.js';
-const references = e => [e.primaryImageFileId,e.bannerImageFileId,...(e.galleryFileIds||[]),...(e.benefits||[]).map(b=>b.imageFileId)];
+const references = e => [e.primaryImageFileId,e.bannerImageFileId,e.routeImageFileId,...(e.galleryFileIds||[]),...(e.benefits||[]).map(b=>b.imageFileId)];
 const include = { benefits: { orderBy: [{ position: 'asc' }, { id: 'asc' }] } };
-const view = row => row && ({ ...row, startsAt: row.startsAt.toISOString(), createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(),
+const view = row => row && ({ ...row, startsAt: row.startsAt?.toISOString() ?? null, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(),
   benefits: row.benefits.map(({ eventId, position, ...benefit }) => benefit) });
 function data(e) {
   return { organizerId: e.organizerId, publicSlug: e.publicSlug, title: e.title, description: e.description,
-    type: e.type ?? null, startsAt: new Date(e.startsAt), timeZone: e.timeZone, venue: e.venue ?? null,
+    kitDateFrom:e.kitDateFrom?new Date(e.kitDateFrom):null,kitDateTo:e.kitDateTo?new Date(e.kitDateTo):null,kitTimeFrom:e.kitTimeFrom??null,kitTimeTo:e.kitTimeTo??null,kitInstructions:e.kitInstructions??null,
+    meetingAt:e.meetingAt?new Date(e.meetingAt):null,meetingVenue:e.meetingVenue??null,kitEnabled:e.kitEnabled??false,kitStartsAt:e.kitStartsAt?new Date(e.kitStartsAt):null,kitEndsAt:e.kitEndsAt?new Date(e.kitEndsAt):null,kitVenue:e.kitVenue??null,kitAddress:e.kitAddress??null,routeImageFileId:e.routeImageFileId??null,
+    type: e.type ?? null, startsAt: e.startsAt ? new Date(e.startsAt) : null, timeZone: e.timeZone, venue: e.venue ?? null,
     virtualUrl: e.virtualUrl ?? null, status: e.status, primaryImageFileId: e.primaryImageFileId ?? null,
     bannerImageFileId: e.bannerImageFileId ?? null, galleryFileIds: e.galleryFileIds ?? [] };
 }

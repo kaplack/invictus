@@ -8,6 +8,8 @@ export function createEventSetupRouter({ service, requireAuth }) {
   router.get('/events/:id/setup', async (req, res) => res.json(await service.get(req.user, req.params.id)));
   router.post('/events/:id/categories', async (req, res) => res.status(201).json(await service.category(req.user, req.params.id, null, req.body)));
   router.put('/events/:id/categories/:categoryId', async (req, res) => res.json(await service.category(req.user, req.params.id, req.params.categoryId, req.body)));
+  router.post('/events/:id/payment-methods', async (req,res)=>res.status(201).json(await service.personalMethod(req.user,req.params.id,null,req.body)));
+  router.put('/events/:id/payment-methods/:methodId', async (req,res)=>res.json(await service.personalMethod(req.user,req.params.id,req.params.methodId,req.body)));
   router.put('/events/:id/payment-methods', async (req, res) => res.json(await service.selectMethods(req.user, req.params.id, req.body)));
   router.get('/teams/:id/payment-methods', async (req, res) => res.json(await service.methods(req.user, req.params.id)));
   router.post('/teams/:id/payment-methods', async (req, res) => res.status(201).json(await service.method(req.user, req.params.id, null, req.body)));

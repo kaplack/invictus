@@ -1,24 +1,26 @@
 import { userLabel } from '../helpers/user.js';
 import React, { useState } from 'react';
+import { ProofPreview } from './ProofPreview.jsx';
 import { Modal } from './Modal.jsx';
 import { State, Feedback, Field, Textarea, Status } from './UI.jsx';
 import { categoryPrice, paymentTypes } from './EventSetup.jsx';
 import { api, upload, base } from '../services/api.js';
 import { useData, useAction } from '../hooks/data.js';
 
-const labels = { PENDING: 'Pendiente', PENDING_REVIEW: 'Pendiente de revisión del Team', OBSERVED: 'Observada: requiere corrección', CONFIRMED: 'Aceptada', REJECTED: 'Rechazada', CANCELLED: 'Cancelada', COMPLETED: 'Finalizada' };
+const labels = { PENDING: 'Pendiente', PENDING_REVIEW: 'Pendiente de revisión del organizador', OBSERVED: 'Observada: requiere corrección', CONFIRMED: 'Aceptada', REJECTED: 'Rechazada', CANCELLED: 'Cancelada', COMPLETED: 'Finalizada' };
 export const RegistrationStatus = ({ status }) => <Status value={status} label={labels[status]}/>;
 const amount = r => categoryPrice({ priceCents: r.amountCents || 0, currency: r.currency || 'PEN' });
 
-function ParticipantFields({ category, participant = {} }) {
-  return <><p>La edad se calcula al día del evento. Los datos son privados para ti y los gestores del Team.</p><div className="form-grid">
-    <Field label="Fecha de nacimiento" name="birthDate" type="date" required={category.minAge !== null || category.maxAge !== null} defaultValue={participant.birthDate || ''} max={new Date().toISOString().slice(0,10)}/>
-    <label>Género<select name="gender" required={!!category.gender} defaultValue={participant.gender || ''}><option value="">Sin indicar</option><option value="FEMALE">Femenino</option><option value="MALE">Masculino</option></select></label>
-    <Field label="Teléfono (opcional)" name="phone" type="tel" maxLength={40} defaultValue={participant.phone || ''}/>
+export function ParticipantFields({ category, participant = {}, guest = false }) {
+  return <><p>Los datos son privados para ti y el organizador.</p><div className="form-grid">
+    {guest && <><Field label="Nombres" name="name" required maxLength={80} defaultValue={participant.name || ''}/><Field label="Apellidos" name="lastName" required maxLength={120} defaultValue={participant.lastName || ''}/></>}
+    {(category.minAge !== null || category.maxAge !== null) && <Field label="Fecha de nacimiento" name="birthDate" type="date" required={category.minAge !== null || category.maxAge !== null} defaultValue={participant.birthDate || ''} max={new Date().toISOString().slice(0,10)}/>}
+    {category.gender && <label>Género<select name="gender" required={!!category.gender} defaultValue={participant.gender || ''}><option value="">Sin indicar</option><option value="FEMALE">Femenino</option><option value="MALE">Masculino</option></select></label>}
+    <Field label={guest ? 'Teléfono' : 'Teléfono (opcional)'} required={guest} name="phone" type="tel" maxLength={40} defaultValue={participant.phone || ''}/>
   </div></>;
 }
 function participantFrom(form) { const f = new FormData(form); return { birthDate: f.get('birthDate') || null, gender: f.get('gender') || null, phone: f.get('phone') || '' }; }
-function ProofField({ required, setFile }) { return <label>Comprobante privado{required ? ' (obligatorio)' : ' (opcional)'} · imagen o PDF, hasta 10 MB<input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" required={required} onChange={e => setFile(e.target.files[0] || null)}/></label>; }
+export function ProofField({ required, setFile }) { return <label>Comprobante privado{required ? ' (obligatorio)' : ' (opcional)'} · imagen o PDF, hasta 10 MB<input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" required={required} onChange={e => setFile(e.target.files[0] || null)}/></label>; }
 export function PaymentInstructions({ method: m, qrPath }) {
   if (!m) return null;
   return <section className="card"><h4>{m.label} · {paymentTypes[m.type]}</h4>
@@ -27,9 +29,9 @@ export function PaymentInstructions({ method: m, qrPath }) {
     {(m.hasQr || m.qrFileId) && <a className="button secondary" href={base + qrPath} target="_blank" rel="noreferrer">Ver QR para pagar</a>}
   </section>;
 }
-export function CategoryEnrollment({ event, close }) {
+export function CategoryEnrollment({ event, close, initialCategoryId = '' }) {
   const r = useData(`/events/${event.id}/registration-options`), a = useAction();
-  const [categoryId, setCategory] = useState(''), [methodId, setMethod] = useState(''), [file, setFile] = useState(null);
+  const [categoryId, setCategory] = useState(initialCategoryId), [methodId, setMethod] = useState(''), [file, setFile] = useState(null);
   return <Modal title={`Inscribirme · ${event.title}`} onClose={close} busy={a.busy}><State resource={r}>{data => {
     if (data.registration) return <><p>Ya tienes una inscripción en este evento.</p><RegistrationStatus status={data.registration.status}/><p><a className="button" href="#/inscripciones">Ver mis inscripciones</a></p></>;
     const category = data.categories.find(c => c.id === categoryId), method = data.methods.find(m => m.id === methodId);
@@ -48,7 +50,7 @@ export function CategoryEnrollment({ event, close }) {
           {!methods.length && <p role="alert">No hay métodos disponibles para esta categoría.</p>}
           {method && <><PaymentInstructions method={method} qrPath={`/events/${event.id}/payment-methods/${method.id}/qr`}/><ProofField key={method.id} required={method.type !== 'CASH'} setFile={setFile}/></>}
         </>}
-        <p>Tu inscripción reservará cupo y quedará pendiente de revisión por el Team. Solo puedes elegir una categoría; una inscripción rechazada no se puede reactivar.</p>
+        <p>Tu inscripción reservará cupo y quedará pendiente de revisión por el organizador. Solo puedes elegir una categoría; una inscripción rechazada no se puede reactivar.</p>
         <button disabled={category.priceCents > 0 && !methodId}>Enviar inscripción</button>
       </>}
     </fieldset><Feedback state={a}/></form>;
@@ -56,22 +58,22 @@ export function CategoryEnrollment({ event, close }) {
 }
 
 export function RegistrationDetail({ id, manager = false, changed = () => {} }) {
-  const r = useData(`/registrations/${id}`), a = useAction(), [file, setFile] = useState(null), [decision, setDecision] = useState('CONFIRMED');
+  const r = useData(`/registrations/${id}`), a = useAction(), [file, setFile] = useState(null), [decision, setDecision] = useState('CONFIRMED'), [proof, setProof] = useState(null);
   const refresh = () => { r.reload(); changed(); setFile(null); };
   return <><State resource={r}>{data => <>
-    <h3>{data.event.title} · {data.categorySnapshot.name}</h3><p>Organiza: {data.event.team?.name}</p>
+    <h3>{data.event.title} · {data.categorySnapshot.name}</h3><p>Organiza: {data.event.publicOrganizerName || data.event.team?.name || 'Organizador independiente'}</p>
     <RegistrationStatus status={data.status}/><p><strong>{amount(data)}</strong> · {data.paymentInstructionsSnapshot?.label || 'Sin pago'}</p>
     <p>{userLabel(data.participantSnapshot)} · {data.participantSnapshot.email}</p>
     <p>{data.participantSnapshot.birthDate ? `Nacimiento: ${data.participantSnapshot.birthDate} · ` : ''}{data.participantSnapshot.gender === 'FEMALE' ? 'Femenino' : data.participantSnapshot.gender === 'MALE' ? 'Masculino' : ''}{data.participantSnapshot.phone ? ` · ${data.participantSnapshot.phone}` : ''}</p>
-    {data.reviewNote && <p className="callout"><strong>Motivo del Team:</strong> {data.reviewNote}</p>}
+    {data.reviewNote && <p className="callout"><strong>Motivo del organizador:</strong> {data.reviewNote}</p>}
     <PaymentInstructions method={data.paymentInstructionsSnapshot} qrPath={`/registrations/${id}/qr`}/>
-    {data.payments.map(p => <section className="payment-row" key={p.id}><span>{new Date(p.createdAt).toLocaleString('es-PE')} · {({ pending: 'Pendiente', pending_review: 'En revisión', verified: 'Verificado', rejected: 'Rechazado', observed: 'Observado' })[p.status]}</span>{p.rejectionReason && <p>{p.rejectionReason}</p>}{p.proofFileId && <a className="button secondary" target="_blank" rel="noreferrer" href={`${base}/registrations/${id}/payments/${p.id}/proof`}>Ver comprobante</a>}</section>)}
+    {data.payments.map(p => <section className="payment-row" key={p.id}><span>{new Date(p.createdAt).toLocaleString('es-PE')} · {({ pending: 'Pendiente', pending_review: 'En revisión', verified: 'Verificado', rejected: 'Rechazado', observed: 'Observado' })[p.status]}</span>{p.rejectionReason && <p>{p.rejectionReason}</p>}{p.proofFileId && <button type="button" className="secondary" onClick={()=>setProof(`${base}/registrations/${id}/payments/${p.id}/proof`)}>Ver comprobante</button>}</section>)}
     {!manager && data.status === 'OBSERVED' && <form key={data.version} className="form" onSubmit={e => {
       e.preventDefault(); const participant = participantFrom(e.currentTarget);
       a.run(async () => {
         const proofFileId = file ? (await upload(file, 'private')).id : null;
         await api(`/registrations/${id}/resubmit`, 'POST', { version: data.version, participant, proofFileId }); refresh();
-      }, 'Corrección enviada al Team.');
+      }, 'Corrección enviada al organizador.');
     }}><h4>Corregir y reenviar</h4><fieldset className="form" disabled={a.busy}><ParticipantFields category={data.categorySnapshot} participant={data.participantSnapshot}/>
       {data.amountCents > 0 && <><p>Adjunta nuevamente el comprobante para conservar ambos intentos en el historial.</p><ProofField required={data.paymentInstructionsSnapshot.type !== 'CASH'} setFile={setFile}/></>}
       <button>Reenviar inscripción</button></fieldset></form>}
@@ -82,6 +84,6 @@ export function RegistrationDetail({ id, manager = false, changed = () => {} }) 
       <Textarea label="Motivo" name="note" required={decision !== 'CONFIRMED'} maxLength={300} disabled={a.busy}/>
       <p>{decision === 'OBSERVED' ? 'Se conserva el cupo mientras el participante corrige.' : decision === 'REJECTED' ? 'Se libera el cupo. Esta inscripción no podrá reactivarse.' : 'Confirma que revisaste los datos y, si corresponde, el pago recibido.'}</p><button disabled={a.busy}>Guardar revisión</button>
     </form>}
-    <details><summary>Historial de cambios ({data.audits.length})</summary>{data.audits.map(h => <p key={h.id}>{new Date(h.createdAt).toLocaleString('es-PE')} · {userLabel(h.actor)} · {labels[h.toStatus]}{h.note ? `: ${h.note}` : ''}</p>)}</details>
-  </>}</State><Feedback state={a}/></>;
+    <details><summary>Historial de cambios ({data.audits.length})</summary>{data.audits.map(h => <p key={h.id}>{new Date(h.createdAt).toLocaleString('es-PE')} · {h.actor ? userLabel(h.actor) : 'Participante invitado'} · {labels[h.toStatus]}{h.note ? `: ${h.note}` : ''}</p>)}</details>
+  </>}</State><Feedback state={a}/>{proof&&<ProofPreview url={proof} close={()=>setProof(null)}/>}</>;
 }

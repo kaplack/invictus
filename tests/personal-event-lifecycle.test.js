@@ -1,0 +1,31 @@
+import test from 'node:test';import assert from 'node:assert/strict';import request from 'supertest';import {randomUUID} from 'node:crypto';
+import {PrismaClient,Prisma} from '../prisma/client/index.js';import {createApp} from '../server/app.js';import {readConfig} from '../server/config.js';
+const url=new URL(process.env.TEST_DATABASE_URL);if(!['localhost','127.0.0.1'].includes(url.hostname)||url.pathname!=='/invictus_test')throw Error('Solo invictus_test local');
+const db=new PrismaClient({datasources:{db:{url:url.href}}}),origin='http://localhost:5173';const app=await createApp({database:db,Prisma,config:readConfig({...process.env,DATABASE_URL:url.href,NODE_ENV:'test',STORAGE_DRIVER:'local',WEB_ORIGINS:origin,UPLOAD_DIRECTORY:'.local/test-uploads'})});test.after(()=>db.$disconnect());
+const send=(agent,method,path,body={})=>agent[method]('/api'+path).set('Origin',origin).send(body);
+async function account(){const agent=request.agent(app);await send(agent,'post','/auth/register',{username:'test_'+randomUUID().replaceAll('-','').slice(0,24),email:randomUUID()+'@example.test',password:'Invictus-Test-2026!'}).expect(201);await send(agent,'put','/profile',{name:'Ana',lastName:'Reglas',documentType:'DNI',documentNumber:'12345678',phone:'+51999111222'}).expect(200);return agent;}
+test('Publicación, inscritos e historial conservan sus reglas sin finalizar automáticamente',async()=>{
+ const owner=await account(),participant=await account(),discipline=(await owner.get('/api/disciplines').expect(200)).body[0];
+ const create=async()=> (await send(owner,'post','/events/mine',{title:'Reglas '+randomUUID(),description:'Evento de prueba',startsAt:new Date(Date.now()+172800000).toISOString(),timeZone:'America/Lima',venue:'Lima',maxCapacity:30,disciplineId:discipline.id}).expect(201)).body;
+ const event=await create();const category=(await send(owner,'post','/events/'+event.id+'/categories',{name:'Libre',priceCents:0}).expect(201)).body;
+ await send(owner,'post','/events/mine/'+event.id+'/publish').expect(200);await send(owner,'post','/events/mine/'+event.id+'/unpublish').expect(200);await send(owner,'post','/events/mine/'+event.id+'/publish').expect(200);
+ await send(participant,'post','/events/'+event.id+'/register',{categoryId:category.id,participant:{phone:'999555666'}}).expect(201);
+ const publicDetail=async()=> (await request(app).get('/api/events/public/'+event.publicSlug).expect(200)).body;
+ assert.equal((await publicDetail()).participantCount,0);
+ const registration=await db.eventRegistration.findFirst({where:{eventId:event.id}});
+ await db.eventRegistration.update({where:{id:registration.id},data:{status:'CONFIRMED'}});
+ const detail=await publicDetail();assert.equal(detail.participantCount,1);assert.equal(detail.registrationEventRows,undefined);assert.equal(detail.participantSnapshot,undefined);
+ assert.equal((await request(app).get('/api/events?upcoming=1').expect(200)).body.find(e=>e.id===event.id).participantCount,1);
+ await db.eventRegistration.update({where:{id:registration.id},data:{status:registration.status}});
+ await send(owner,'post','/events/mine/'+event.id+'/unpublish').expect(409);
+ for(const data of [{title:'Cambiar nombre'},{startsAt:new Date(Date.now()+259200000).toISOString()},{maxCapacity:40}])await send(owner,'patch','/events/mine/'+event.id,data).expect(409);
+ await send(owner,'patch','/events/mine/'+event.id,{description:'Información actualizada',venue:'Nueva ubicación'}).expect(200);
+ await send(owner,'put','/events/'+event.id+'/categories/'+category.id,{name:'Libre',priceCents:500}).expect(409);
+ await db.event.update({where:{id:event.id},data:{startsAt:new Date(Date.now()-3600000)}});
+ await send(owner,'post','/events/mine/'+event.id+'/unpublish').expect(409);await send(owner,'post','/events/mine/'+event.id+'/publish').expect(409);await send(owner,'patch','/events/mine/'+event.id,{description:'Información histórica'}).expect(200);
+ await owner.get('/api/events/mine/'+event.id+'/attendees').expect(200);await request(app).get('/api/events/public/'+event.publicSlug).expect(200);
+ assert.equal((await db.event.findUnique({where:{id:event.id}})).status,'PUBLISHED');assert.equal((await request(app).get('/api/events?upcoming=1').expect(200)).body.some(e=>e.id===event.id),false);
+ const empty=await create();await send(owner,'post','/events/mine/'+empty.id+'/publish').expect(200);await db.event.update({where:{id:empty.id},data:{startsAt:new Date(Date.now()-3600000)}});await send(owner,'post','/events/mine/'+empty.id+'/unpublish').expect(409);await send(owner,'patch','/events/mine/'+empty.id,{startsAt:new Date(Date.now()+3600000).toISOString()}).expect(409);
+ await db.event.update({where:{id:event.id},data:{status:'DRAFT',reviewStatus:'DRAFT'}});await send(owner,'post','/events/mine/'+event.id+'/publish').expect(409);assert.equal((await owner.get('/api/events/'+event.id+'/setup').expect(200)).body.editable,false);
+ const row=(await owner.get('/api/events/mine').expect(200)).body.find(e=>e.id===event.id);assert.equal(row.lifecycle.started,true);assert.equal(row.lifecycle.hasRegistrations,true);assert.equal(row.lifecycle.conditionsLocked,true);assert.ok(row.lifecycle.publicationBlockReason);assert.equal(await db.eventRegistration.count({where:{eventId:event.id}}),1);
+});

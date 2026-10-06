@@ -1,3 +1,4 @@
+import {readProfileIdentity} from '../profile/identity.js';
 import { z } from 'zod';
 import { AppError } from '@base/usuarios-acceso';
 import { requireEventManager, requireTeamManager } from '../teams/event-access.js';
@@ -17,7 +18,7 @@ export const reviewInput = z.object({ version: z.number().int().positive(), deci
   note: z.string().trim().max(300).default('') }).strict().refine(v => v.decision === 'CONFIRMED' || !!v.note, 'Indica el motivo de la observación o rechazo');
 export const fail = (message, code = 'INVALID_STATE', status = 409) => { throw new AppError(message, status, code); };
 
-export function validateParticipant(category, participant, eventDate) {
+export function validateParticipant(category, participant, eventDate = new Date().toISOString().slice(0,10)) {
   if (category.gender && category.gender !== participant.gender) fail('El género no corresponde a esta categoría', 'CATEGORY_ELIGIBILITY', 400);
   if ((category.minAge !== null || category.maxAge !== null) && !participant.birthDate) fail('Indica la fecha de nacimiento para esta categoría', 'BIRTH_DATE_REQUIRED', 400);
   if (participant.birthDate) {
@@ -34,13 +35,14 @@ export async function audit(tx, registration, actorId, toStatus, note = null) {
 }
 export async function prepareRegistration(tx, user, eventId, raw) {
   const db = tx.database;
+  if((await db.event.findUnique({where:{id:eventId}}))?.mode==='INFORMATIONAL') fail('Este evento no recibe inscripciones en Invictus','INFORMATIONAL_EVENT');
   if (!await db.eventCategory.count({ where: { eventId } })) {
     if (raw && Object.keys(raw).length) fail('Este evento usa inscripción general', 'INVALID_INPUT', 400);
     return;
   }
   const input = enrollmentInput.parse(raw);
   const event = await db.event.findUnique({ where: { id: eventId }, include: { team: true } });
-  if (!event?.team?.active || event.status !== 'PUBLISHED' || event.startsAt <= new Date()) fail('El evento no acepta inscripciones', 'EVENT_NOT_OPEN');
+  if (!event || (event.teamId && !event.team?.active) || event.status !== 'PUBLISHED' || event.startsAt <= new Date()) fail('El evento no acepta inscripciones', 'EVENT_NOT_OPEN');
   const category = await db.eventCategory.findFirst({ where: { id: input.categoryId, eventId, active: true } });
   if (!category) fail('Categoría no disponible', 'CATEGORY_NOT_FOUND', 400);
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: event.timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(event.startsAt);
@@ -49,20 +51,23 @@ export async function prepareRegistration(tx, user, eventId, raw) {
   validateParticipant(category, input.participant, eventDate);
   if (category.capacity !== null && await db.eventRegistration.count({ where: { categoryId: category.id, status: { in: reservedStates } } }) >= category.capacity) fail('Cupo de categoría agotado', 'CATEGORY_CAPACITY_REACHED');
   let method = null;
+  const configuration=await db.eventRegistrationConfig.findUnique({where:{eventId}});
+  const recipientId=event.teamId?event.team?.paymentRecipientId:configuration?.paymentRecipientId;
   if (category.priceCents) {
     const selected = input.methodId && await db.eventPaymentMethod.findUnique({ where: { eventId_methodId: { eventId, methodId: input.methodId } }, include: { method: true } });
     method = selected?.method;
-    if (!method?.active || method.teamId !== event.teamId || method.currency !== category.currency) fail('Selecciona un método activo del evento y de la misma moneda', 'INVALID_PAYMENT_METHOD', 400);
-    if (!event.team.paymentRecipientId) fail('Team sin destinatario de pagos', 'NOT_CONFIGURED');
+    if (!method?.active || (event.teamId?method.teamId!==event.teamId:method.teamId!==null||method.eventId!==event.id) || method.currency !== category.currency) fail('Selecciona un método activo del evento y de la misma moneda', 'INVALID_PAYMENT_METHOD', 400);
+    if (!recipientId) fail('Evento sin destinatario de pagos', 'NOT_CONFIGURED');
   } else if (input.methodId || input.proofFileId) fail('La categoría gratuita no requiere pago ni comprobante', 'INVALID_INPUT', 400);
   const categorySnapshot = { name: category.name, description: category.description, gender: category.gender, minAge: category.minAge, maxAge: category.maxAge,
     modality: category.modality, eventDate, ageReference: 'EVENT_DATE' };
-  const instructions = method ? { recipientName: event.team.name, methodId: method.id, type: method.type, label: method.label, phone: method.phone,
+  const instructions = method ? { recipientName: event.team?.name || method.holderName, methodId: method.id, type: method.type, label: method.label, phone: method.phone,
     holder: method.holderName, bank: method.bank, accountNumber: method.accountNumber, cci: method.cci, currency: method.currency, instructions: method.instructions, qrFileId: method.qrFileId } : undefined;
-  return { manualReview: true, event: { amountCents: category.priceCents, currency: category.currency, paymentRecipientId: method ? event.team.paymentRecipientId : null },
+  const identity=user.id ? await readProfileIdentity(db,user) : user;
+  return { manualReview: true, event: { amountCents: category.priceCents, currency: category.currency, paymentRecipientId: method ? recipientId : null },
     payment: method ? { instructions, qrFileId: method.qrFileId } : undefined,
     data: { categoryId: category.id, methodId: method?.id || null, amountCents: category.priceCents, currency: category.currency, categorySnapshot,
-      participantSnapshot: { username: user.username, name: user.name, lastName: user.lastName, email: user.email, ...input.participant } } };
+      participantSnapshot: { username: identity.username, name: identity.name, lastName: identity.lastName, email: identity.email, ...input.participant } } };
 }
 
 async function categoryRegistration(tx, operation) {
@@ -75,7 +80,7 @@ export const categoryPaymentPolicy = {
     const r = await categoryRegistration(tx, operation);
     if (!r) return false;
     if (admin) await requireEventManager(tx.database, user, r.event);
-    else if (r.userId !== user?.id) fail('Inscripción no disponible', 'NOT_FOUND', 404);
+    else if (r.userId ? r.userId !== user?.id : !user?.guestAccessHash || r.guestAccessHash !== user.guestAccessHash) fail('Inscripción no disponible', 'NOT_FOUND', 404);
     return true;
   },
   async validateRegister(tx, user, operation, input) {
@@ -87,7 +92,7 @@ export const categoryPaymentPolicy = {
   },
   async registered(tx, user, operation, payment) {
     const r = await categoryRegistration(tx, operation);
-    await audit(tx, r, user.id, 'PENDING_REVIEW');
+    await audit(tx, r, user.id || null, 'PENDING_REVIEW');
     await tx.database.eventRegistration.update({ where: { id: r.id }, data: { status: 'PENDING_REVIEW', proofFileId: payment.proofFileId, reviewNote: null, version: { increment: 1 } } });
   },
   async validateReview(tx, user, operation) {

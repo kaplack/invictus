@@ -1,10 +1,12 @@
 # Perfil del deportista — etapa 1
 
+Actualización del MVP 2026-10-03: la interfaz visible es el perfil básico y la proyección de nombres hacia User ya no se escribe. Sesión/consumidores leen Profile; las columnas históricas de User se conservan como respaldo de cuentas sin perfil. Ver [identidad actual](profile-identity.md). Las secciones siguientes describen la implementación histórica de la etapa 1.
+
 Implementado sobre el perfil existente, conservando el sistema visual navy, navbar, footer y registro mínimo. No hay rutas de perfil público nuevas ni bloqueos por perfil incompleto.
 
 ## Interfaz y contratos
 
-`/perfil` (también `/cuenta`) mantiene banner y tarjeta de identidad. Información y Contacto tienen formularios y guardados independientes; cambiar de pestaña conserva los borradores. Presencia digital, Deportes y Trayectoria tienen estados vacíos, sin funciones ficticias. Tabs accesibles con flechas, Home/End y desplazamiento horizontal interno en móvil.
+`/perfil` (también `/cuenta`) mantiene banner y tarjeta de identidad. Información y Contacto tienen formularios y guardados independientes; cambiar de pestaña conserva los borradores. En el cierre de esta etapa, Presencia digital, Deportes y Trayectoria tenían estados vacíos. Presencia digital y Deportes se implementaron después; ver sus documentos enlazados en Siguientes etapas. Trayectoria externa se implementó en la primera etapa; ver trajectory.md. Tabs accesibles con flechas, Home/End y desplazamiento horizontal interno en móvil.
 
 Información: nombres, apellidos, username, fecha de nacimiento, género, documento, avatar y bio. Contacto: teléfono internacional, país y ubicación. La tarjeta solo muestra nombres, @username, avatar, bio y ubicación resumida como previsualización privada del propietario.
 
@@ -93,7 +95,11 @@ No se ejecutó una batería exhaustiva ni se repitieron regresiones sin motivo; 
 
 ## Siguientes etapas
 
-- Presencia digital: diseñar links relacionados extensibles; no se agregaron columnas por red ni ParticipantSocialLink.
-- Deportes: relación de múltiples disciplinas por usuario; no se añadió sport ni un modelo deportivo nuevo.
-- Trayectoria: partir de eventos/inscripciones/resultados verificables; no se añadieron resultados, badges ni logros manuales.
+- Presencia digital: implementada posteriormente con ParticipantSocialLink; ver [presencia digital](digital-presence.md).
+- Deportes: implementado posteriormente con ParticipantDiscipline y el catálogo Discipline; ver [deportes del perfil](profile-sports.md).
+- Trayectoria: historia externa implementada (ver [trajectory.md](trajectory.md)). Diseño futuro de CV deportivo con historia externa y datos Invictus, confianza, badges y credenciales en [el backlog general](../BACKLOG.md#trayectoria-deportiva-y-credenciales--diseño-funcional-acordado-2026-10-02). No se implementaron resultados, badges ni credenciales. Inscripción confirmada no acredita participación ni Finisher.
 - Migrar consumidores de User.name/lastName y evaluar la retirada posterior de la proyección histórica.
+
+## Trayectoria externa
+
+Primera etapa implementada: participaciones históricas propias, opcionales y declaradas, con año y fecha exacta opcional. Ver [trajectory.md](trajectory.md). Evidencias y resultados oficiales pendientes en BACKLOG.md.

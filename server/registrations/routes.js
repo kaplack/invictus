@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { sendFileStream } from '@base/archivos-imagenes';
 export function createRegistrationRouter({ service, requireAuth }) {
   const r = Router();
+  r.get('/events/:id/my-registration', requireAuth, async (req,res) => res.json(await service.mine(req.user,req.params.id)));
   r.get('/events/:id/registration-options', requireAuth, async (req,res) => res.json(await service.options(req.user,req.params.id)));
   r.get('/events/:id/registrations', requireAuth, async (req,res) => res.json(await service.list(req.user,req.params.id,req.query)));
   r.get('/registrations/:id', requireAuth, async (req,res) => res.json(await service.get(req.user,req.params.id)));

@@ -1,21 +1,27 @@
 import { AppError, usernameSchema } from '@base/usuarios-acceso';
 import { parseInput, runCoordinated, assertLiveFiles } from '@base/usuarios-acceso/contracts';
 import { createProfileService, createPrismaProfileStore } from '@base/perfil-trayectoria';
+import { sportsInclude, sportsView, saveSports } from './sports.js';
+import { parseDigital } from './digital.js';
 import { athleteProfileInput } from './validation.js';
 import { countries, ubigeos, ubigeoByCode } from './location.js';
-const extraKeys = ['name','lastName','dateOfBirth','gender','documentType','documentNumber','phone','countryCode','department','province','district','ubigeoCode','bannerFileId'];
+const extraKeys = ['name','lastName','dateOfBirth','gender','documentType','documentNumber','phone','countryCode','department','province','district','ubigeoCode','bannerFileId','websiteUrl'];
 const identityKeys = ['name','lastName','username'];
 const own = actor => { if (!actor?.id) throw new AppError('Debes iniciar sesión',401,'UNAUTHENTICATED'); };
 const invalid = message => { throw new AppError(message,400,'INVALID_INPUT'); };
-const view = (row,username) => row && ({ ...row, username,
+const view = (row,username) => {
+ if(!row)return null;
+ const {participantDisciplines,disciplines:legacyDisciplines,...fields}=row;
+ return ({ ...fields, disciplines:sportsView(participantDisciplines), username,
   dateOfBirth: row.dateOfBirth ? new Date(row.dateOfBirth).toISOString().slice(0,10) : null });
+};
 export function createAthleteProfileService({database:db,files,registrations,canModerate}) {
   const legacy = connection => createProfileService({store:createPrismaProfileStore(connection),fileService:files,registrationService:registrations,canModerate});
   return {
     async getMine(actor) {
       own(actor);
       const [profile,user] = await Promise.all([
-        db.participantProfile.findUnique({where:{userId:actor.id}}),
+        db.participantProfile.findUnique({where:{userId:actor.id},include:{participantDisciplines:sportsInclude,socialLinks:{select:{platform:true,url:true},orderBy:{platform:'asc'}}}}),
         db.user.findUnique({where:{id:actor.id},select:{username:true}})
       ]);
       return view(profile,user.username);
@@ -28,12 +34,17 @@ export function createAthleteProfileService({database:db,files,registrations,can
     },
     async save(actor,raw) {
       own(actor);
-      const submitted = Object.fromEntries(Object.entries(parseInput(athleteProfileInput,raw)).filter(([,value]) => value !== undefined));
+      const submitted = Object.fromEntries(Object.entries(parseInput(athleteProfileInput,parseDigital(raw))).filter(([,value]) => value !== undefined));
       try {
         return await runCoordinated(db,async tx => {
           const user = await tx.user.findUnique({where:{id:actor.id}});
           const current = await tx.participantProfile.findUnique({where:{userId:actor.id}});
           const input = {...submitted};
+          if (submitted.socialLinks !== undefined) {
+            await tx.$queryRaw`SELECT id FROM users WHERE id = ${actor.id}::uuid FOR UPDATE`;
+          }
+          delete input.socialLinks;
+          delete input.disciplines;
           const clearMissing = keys => { for (const key of keys) if (input[key] === undefined) input[key] = null; };
           if (input.countryCode !== undefined && input.countryCode !== current?.countryCode)
             clearMissing(['department','province','district','ubigeoCode']);
@@ -88,13 +99,9 @@ export function createAthleteProfileService({database:db,files,registrations,can
             if (taken && taken.id !== actor.id) throw new AppError('Este nombre de usuario ya está en uso',409,'USERNAME_IN_USE');
           }
           const names = {
-            name: input.name !== undefined ? input.name : current?.name ?? user.name,
-            lastName: input.lastName !== undefined ? input.lastName : current?.lastName ?? user.lastName
+            name: input.name !== undefined ? input.name : current ? current.name : user.name,
+            lastName: input.lastName !== undefined ? input.lastName : current ? current.lastName : user.lastName
           };
-          if (identityKeys.some(key => input[key] !== undefined)) {
-            if (input.name === undefined && !current?.name) extra.name = user.name || null;
-            if (input.lastName === undefined && !current?.lastName) extra.lastName = user.lastName || null;
-          }
           const displayName = [names.name,names.lastName].filter(Boolean).join(' ');
           const publicName = identityKeys.some(key => input[key] !== undefined)
             ? (displayName || '@'+username).slice(0,120)
@@ -102,10 +109,17 @@ export function createAthleteProfileService({database:db,files,registrations,can
           await legacy(tx).save(actor,{...merged,location:merged.location ?? undefined,publicName,visibility:current?.visibility || 'PRIVATE'});
           if (extra.dateOfBirth !== undefined) extra.dateOfBirth = extra.dateOfBirth ? new Date(extra.dateOfBirth+'T00:00:00.000Z') : null;
           const profile = await tx.participantProfile.update({where:{userId:actor.id},data:extra});
-          // Compatibility projection for Teams, admin and existing registrations.
-          if (identityKeys.some(key => input[key] !== undefined))
-            await tx.user.update({where:{id:actor.id},data:{username,name:profile.name || '',lastName:profile.lastName || ''}});
-          return view(profile,username);
+          // Only account identity belongs in User. Names remain exclusively in Profile.
+          if (input.username !== undefined)
+            await tx.user.update({where:{id:actor.id},data:{username}});
+          if (submitted.socialLinks !== undefined) {
+            await tx.participantSocialLink.deleteMany({where:{participantProfileId:profile.id}});
+            if (submitted.socialLinks.length) await tx.participantSocialLink.createMany({data:submitted.socialLinks.map(link=>({...link,participantProfileId:profile.id}))});
+          }
+          if (submitted.disciplines !== undefined) await saveSports(tx,profile.id,submitted.disciplines);
+          const participantDisciplines = await tx.participantDiscipline.findMany({where:{participantProfileId:profile.id},...sportsInclude});
+          const socialLinks = await tx.participantSocialLink.findMany({where:{participantProfileId:profile.id},select:{platform:true,url:true},orderBy:{platform:'asc'}});
+          return view({...profile,socialLinks,participantDisciplines},username);
         });
       } catch(error) {
         if (error.code === 'P2002' && error.meta?.target?.includes('username'))
@@ -114,7 +128,10 @@ export function createAthleteProfileService({database:db,files,registrations,can
       }
     },
     // No new public profile route is exposed in this stage.
-    getPublic: id => legacy(db).getPublic(id),
+    async getPublic(id) {
+      const profile=await legacy(db).getPublic(id);
+      return {...profile,disciplines:sportsView(await db.participantDiscipline.findMany({where:{participantProfileId:id},...sportsInclude}))};
+    },
     participation: actor => legacy(db).participation(actor),
     moderate: (actor,id,decision) => legacy(db).moderate(actor,id,decision)
   };

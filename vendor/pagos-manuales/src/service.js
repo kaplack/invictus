@@ -13,8 +13,8 @@ export function createPaymentService({ store, fileService, resolvePermissions, m
     else if (operation.payerId !== user?.id) throw unavailable();
     return operation;
   }
-  async function content(fileId, ownerId) {
-    const owner = { id: ownerId };
+  async function content(fileId, ownerId, guestAccessHash) {
+    const owner = { id: ownerId, guestAccessHash };
     const access = await fileService.access(fileId, owner);
     return fileService.content(fileId, owner, Object.fromEntries(new URLSearchParams(access.path.split('?')[1])));
   }
@@ -46,7 +46,7 @@ export function createPaymentService({ store, fileService, resolvePermissions, m
         if ((await tx.payments.list(id)).some(p => !['rejected','observed'].includes(p.status))) throw new AppError('Ya existe un pago pendiente o verificado', 409, 'PAYMENT_EXISTS');
         if (input.proofFileId) {
           const file = await tx.files.lock(input.proofFileId);
-          if (!file || file.deletedAt || file.ownerId !== user.id || file.visibility !== 'private') throw new AppError('Selecciona un comprobante privado propio', 400, 'INVALID_PROOF');
+          if (!file || file.deletedAt || (file.ownerId ? file.ownerId !== user.id : !user.guestAccessHash || file.guestAccessHash !== user.guestAccessHash) || file.visibility !== 'private') throw new AppError('Selecciona un comprobante privado propio', 400, 'INVALID_PROOF');
           if (await tx.payments.usesFile(file.id)) throw new AppError('El comprobante ya está asociado a un pago', 409, 'PROOF_ALREADY_USED');
         }
         const payment = await tx.payments.create({ id: randomUUID(), operationId: id, method: input.method, status: input.method === 'cash' ? 'pending' : 'pending_review',
@@ -82,13 +82,15 @@ export function createPaymentService({ store, fileService, resolvePermissions, m
       });
     },
     async proof(user, id, paymentId, admin = false) {
-      const { ownerId, fileId } = await store.run(id, async tx => {
+      const { ownerId, fileId, guestAccessHash } = await store.run(id, async tx => {
         const operation = await authorize(tx, user, id, admin);
         const payment = (await tx.payments.list(id)).find(p => p.id === paymentId);
         if (!payment?.proofFileId) throw new AppError('Comprobante no disponible', 404, 'PROOF_NOT_FOUND');
-        return { ownerId: operation.payerId, fileId: payment.proofFileId };
+        const receipt = await tx.files.lock(payment.proofFileId);
+        if (!receipt || receipt.deletedAt) throw unavailable();
+        return { ownerId: receipt.ownerId, guestAccessHash: receipt.guestAccessHash, fileId: receipt.id };
       });
-      return content(fileId, ownerId);
+      return content(fileId, ownerId, guestAccessHash);
     },
     async qr(user, id, admin = false) {
       const file = await store.run(id, async tx => {

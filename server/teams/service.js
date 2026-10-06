@@ -1,3 +1,4 @@
+import {profileNamesSelect,withUserIdentity} from '../profile/identity.js';
 import { z } from 'zod';
 import { AppError } from '@base/usuarios-acceso';
 import { runCoordinated, assertLiveFiles } from '@base/usuarios-acceso/contracts';
@@ -28,7 +29,7 @@ const memberSelect = {
   joinedAt: true,
   user: {
     select: {
-      username: true, name: true, lastName: true
+      username: true, name: true, lastName: true, ...profileNamesSelect
     }
   }
 };
@@ -332,7 +333,7 @@ export function createTeamService({
     },
     async requests(actor, id) {
       await access(db, actor, id, ['OWNER']);
-      return db.teamAdmission.findMany({
+      const rows=await db.teamAdmission.findMany({
         where: {
           teamId: id,
           kind: 'REQUEST',
@@ -342,7 +343,7 @@ export function createTeamService({
           id: true,
           user: {
             select: {
-              username: true, name: true, lastName: true
+              username: true, name: true, lastName: true, ...profileNamesSelect
             }
           }
         },
@@ -350,6 +351,7 @@ export function createTeamService({
           createdAt: 'asc'
         }
       });
+      return rows.map(withUserIdentity);
     },
     async decide(actor, id, admissionId, raw) {
       const accept = z.boolean().parse(raw.accept);
@@ -511,7 +513,7 @@ export function createTeamService({
         take: 21
       });
       return {
-        items: rows.slice(0, 20),
+        items: rows.slice(0, 20).map(withUserIdentity),
         nextOffset: rows.length > 20 ? skip + 20 : null
       };
     },
@@ -546,7 +548,7 @@ export function createTeamService({
             role: data.role
           },
           select: memberSelect
-        });
+        }).then(withUserIdentity);
       });
     },
     async changeRole(actor, id, memberId, raw) {
@@ -562,7 +564,7 @@ export function createTeamService({
           },
           data,
           select: memberSelect
-        });
+        }).then(withUserIdentity);
       });
     },
     async remove(actor, id, memberId) {

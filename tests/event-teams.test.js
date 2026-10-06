@@ -28,7 +28,7 @@ test('eventos por Team: gestión compartida, revocación, revisión, inscripció
   const adminMembership = (await send(owner.agent, 'post', `/teams/${team.id}/members`, { email: coadmin.user.email, role: 'ADMIN' }).expect(201)).body;
   await send(owner.agent, 'post', `/teams/${team.id}/members`, { email: member.user.email }).expect(201);
   const input = { title: 'Natación Teams', description: 'Encuentro del Team', startsAt: '2027-09-01T14:00:00Z', timeZone: 'America/Lima', venue: 'Callao', maxCapacity: 5 };
-  await send(owner.agent, 'post', '/events/mine', input).expect(400);
+  await send(owner.agent, 'post', '/events/mine', input).expect(409);
   await send(member.agent, 'post', '/events/mine', { ...input, teamId: team.id }).expect(403);
   await send(outsider.agent, 'post', '/events/mine', { ...input, teamId: team.id }).expect(404);
   await send(moderator.agent, 'post', '/events/manage', { ...input, teamId: team.id }).expect(404);
@@ -58,7 +58,7 @@ test('eventos por Team: gestión compartida, revocación, revisión, inscripció
   assert.equal((await coadmin.agent.get(`/api/events/mine/${event.id}/attendees`).expect(200)).body.length, 1);
   await owner.agent.get(`/api/events/manage/${event.id}/attendees`).expect(404);
 
-  // Historical fixture: no new API may create a Team-less event, but old rows stay usable.
+  // Historical fixture: existing Team-less rows stay usable.
   const legacy = await db.event.create({ data: { id: randomUUID(), organizerId: owner.user.id, publicSlug: 'legacy-' + randomUUID(), title: 'Histórico', description: 'Anterior a Teams', startsAt: new Date(input.startsAt), timeZone: input.timeZone, source: 'EXTERNAL', status: 'PUBLISHED', reviewStatus: 'APPROVED' } });
   await db.eventRegistrationConfig.create({ data: { eventId: legacy.id, amountCents: 0, currency: 'PEN', maxCapacity: 5 } });
   await owner.agent.get(`/api/events/mine/${legacy.id}`).expect(200);
@@ -76,4 +76,75 @@ test('eventos por Team: gestión compartida, revocación, revisión, inscripció
   assert.equal((await db.eventRegistration.findUnique({ where: { id: oldRegistration.id } })).status, 'CONFIRMED');
   await owner.agent.get(`/api/events/mine/${legacy.id}`).expect(404);
   await coadmin.agent.get(`/api/events/mine/${legacy.id}`).expect(200);
+});
+
+
+test('evento personal exige Profile completo y conserva propiedad y acceso sin Team', async () => {
+  const owner=await account(), outsider=await account();
+  const input={title:'Evento personal',description:'Encuentro independiente',startsAt:'2027-09-01T14:00:00Z',timeZone:'America/Lima',venue:'Lima',maxCapacity:5};
+  const missing=await send(owner.agent,'post','/events/mine',input).expect(409);
+  assert.equal(missing.body.error.code,'PROFILE_INCOMPLETE');
+  await send(owner.agent,'put','/profile',{name:'Ana',lastName:'Pérez',documentType:'DNI',documentNumber:'12345678'}).expect(200);
+  await send(owner.agent,'post','/events/mine',input).expect(409);
+  await send(owner.agent,'put','/profile',{phone:'+51987654321'}).expect(200);
+  const event=(await send(owner.agent,'post','/events/mine',input).expect(201)).body;
+  assert.equal(event.teamId,null);
+  assert.equal(event.organizerId,owner.user.id);
+  assert.equal(event.createdByUserId,owner.user.id);
+  assert.equal(await db.teamMember.count({where:{userId:owner.user.id}}),0);
+  assert.ok((await owner.agent.get('/api/events/mine').expect(200)).body.some(e=>e.id===event.id));
+  await owner.agent.get('/api/events/mine/'+event.id).expect(200);
+  await outsider.agent.get('/api/events/mine/'+event.id).expect(403);
+  await send(outsider.agent,'patch','/events/mine/'+event.id,input).expect(403);
+  await send(owner.agent,'patch','/events/mine/'+event.id,{...input,venue:'Callao'}).expect(200);
+  await send(owner.agent,'patch','/events/mine/'+event.id,{...input,teamId:randomUUID()}).expect(409);
+  assert.equal((await db.participantProfile.findUnique({where:{userId:owner.user.id}})).documentNumber,'12345678');
+  await request(app).get('/api/events/public/'+event.publicSlug).expect(404);
+  await send(outsider.agent,'post','/events/mine/'+event.id+'/publish').expect(403);
+  await send(owner.agent,'post','/events/mine/'+event.id+'/publish').expect(200);
+  await request(app).get('/api/events/public/'+event.publicSlug).expect(200);
+  const registration=(await send(outsider.agent,'post','/events/'+event.id+'/register').expect(201)).body;
+  await send(owner.agent,'patch','/events/mine/'+event.id,{...input,title:'Título actualizado',venue:'Callao'}).expect(200);
+  await send(owner.agent,'patch','/events/mine/'+event.id,{...input,maxCapacity:10}).expect(409);
+  await send(owner.agent,'patch','/events/mine/'+event.id,{...input,startsAt:'2027-09-02T14:00:00Z'}).expect(409);
+  await send(outsider.agent,'post','/events/mine/'+event.id+'/unpublish').expect(403);
+  await send(owner.agent,'post','/events/mine/'+event.id+'/unpublish').expect(200);
+  await request(app).get('/api/events/public/'+event.publicSlug).expect(404);
+  assert.ok(!(await request(app).get('/api/events').expect(200)).body.some(e=>e.id===event.id));
+  assert.equal((await db.eventRegistration.findUnique({where:{id:registration.id}})).status,'CONFIRMED');
+  const newcomer=await account();
+  await send(newcomer.agent,'post','/events/'+event.id+'/register').expect(409);
+  await send(owner.agent,'post','/events/mine/'+event.id+'/publish').expect(200);
+  assert.equal(await db.eventRegistration.count({where:{eventId:event.id}}),1);
+  const personalProfile=await db.participantProfile.findUnique({where:{userId:owner.user.id}});
+  await db.participantProfile.update({where:{id:personalProfile.id},data:{bio:'Historia conservada',experience:'Experiencia previa'}});
+  await send(owner.agent,'put','/profile',{name:'Ana',lastName:'Pérez',documentType:'DNI',documentNumber:'12345678',phone:'+51987654321'}).expect(200);
+  const preserved=await db.participantProfile.findUnique({where:{id:personalProfile.id}});
+  assert.equal(preserved.bio,'Historia conservada');assert.equal(preserved.experience,'Experiencia previa');
+});
+
+
+test('informativos: ADMIN crea sin Team, publica, edita y despublica; inscripción bloqueada',async()=>{
+ const admin=await account('ADMIN'), participant=await account(), organizer=await account('ORGANIZER');
+ const input={mode:'INFORMATIONAL',title:'Carrera externa',description:'Evento de una academia externa',startsAt:'2027-10-02T14:00:00Z',timeZone:'America/Lima',venue:'Lima',publicOrganizerName:'Academia externa',externalUrl:'https://example.test/carrera'};
+ await send(participant.agent,'post','/events/manage',input).expect(403);
+ await send(organizer.agent,'post','/events/manage',input).expect(403);
+ await send(admin.agent,'post','/events/manage',{...input,externalUrl:'javascript:alert(1)'}).expect(400);
+ const event=(await send(admin.agent,'post','/events/manage',input).expect(201)).body;
+ assert.equal(event.mode,'INFORMATIONAL');assert.equal(event.teamId,null);assert.equal(event.createdByUserId,admin.user.id);
+ await send(admin.agent,'patch','/events/mine/'+event.id,{title:'No permitido',maxCapacity:10}).expect(409);
+ assert.equal(await db.eventRegistrationConfig.count({where:{eventId:event.id}}),0);
+ await request(app).get('/api/events/public/'+event.publicSlug).expect(404);
+ await send(admin.agent,'post','/events/manage/'+event.id+'/publish').expect(200);
+ const detail=(await request(app).get('/api/events/public/'+event.publicSlug).expect(200)).body;
+ assert.equal(detail.publicOrganizerName,'Academia externa');assert.equal(detail.externalUrl,input.externalUrl);
+ assert.ok((await request(app).get('/api/events').expect(200)).body.some(e=>e.id===event.id&&e.mode==='INFORMATIONAL'));
+ await send(participant.agent,'post','/events/'+event.id+'/register').expect(409);
+ await send(admin.agent,'patch','/events/manage/'+event.id,{...input,title:'Carrera actualizada'}).expect(200);
+ await send(admin.agent,'patch','/events/manage/'+event.id,{...input,mode:'MANAGED'}).expect(409);
+ await send(participant.agent,'post','/events/manage/'+event.id+'/unpublish').expect(403);
+ await send(admin.agent,'post','/events/manage/'+event.id+'/unpublish').expect(200);
+ await request(app).get('/api/events/public/'+event.publicSlug).expect(404);
+ assert.equal(await db.eventRegistration.count({where:{eventId:event.id}}),0);
+ const managed=await db.event.findFirst({where:{mode:'MANAGED'}});assert.ok(managed);
 });

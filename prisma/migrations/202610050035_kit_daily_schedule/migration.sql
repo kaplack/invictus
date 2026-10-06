@@ -1,0 +1,3 @@
+ALTER TABLE events ADD COLUMN kit_date_from date, ADD COLUMN kit_date_to date, ADD COLUMN kit_time_from varchar(5), ADD COLUMN kit_time_to varchar(5), ADD COLUMN kit_instructions varchar(2000);
+UPDATE events SET kit_date_from=(kit_starts_at AT TIME ZONE time_zone)::date,kit_date_to=(kit_ends_at AT TIME ZONE time_zone)::date,kit_time_from=to_char(kit_starts_at AT TIME ZONE time_zone,'HH24:MI'),kit_time_to=to_char(kit_ends_at AT TIME ZONE time_zone,'HH24:MI');
+ALTER TABLE events ADD CONSTRAINT events_kit_dates_order CHECK (kit_date_from IS NULL OR kit_date_to IS NULL OR kit_date_to>=kit_date_from);

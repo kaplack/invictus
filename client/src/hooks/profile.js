@@ -31,7 +31,7 @@ export function useProfileEditor(profile,user,onSession) {
   const avatar = useProfileImage(), banner = useProfileImage();
   const informationAction = useAction(), contactAction = useAction(), bannerAction = useAction();
   const busy = informationAction.busy || contactAction.busy || bannerAction.busy;
-  return { saved,info,setInfo,contact,setContact,avatar,banner,busy,informationAction,contactAction,bannerAction,
+  return { saved,setSaved,info,setInfo,contact,setContact,avatar,banner,busy,informationAction,contactAction,bannerAction,
     saveInformation: () => informationAction.run(async () => {
       const avatarFileId = avatar.file ? (await uploadProfileImage(avatar.file)).id : saved?.avatarFileId || null;
       const result = await saveProfile({...info,gender:info.gender || null,documentType:info.documentType || null,avatarFileId});

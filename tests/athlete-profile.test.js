@@ -37,7 +37,8 @@ test('perfil: edición independiente, datos privados, imágenes, username, login
   const first=(await send(a.agent,'put','/profile',info).expect(200)).body;
   for(const [key,value] of Object.entries(info))assert.equal(first[key],value);
   const user=await db.user.findUnique({where:{id:a.user.id}});
-  assert.equal(user.name,'Alan');assert.equal(user.lastName,'Burga');
+  assert.equal(user.name,'');assert.equal(user.lastName,'');
+  const sessionIdentity=(await a.agent.get('/api/auth/session').expect(200)).body.user;assert.equal(sessionIdentity.name,'Alan');assert.equal(sessionIdentity.lastName,'Burga');
   assert.equal(first.publicName,'Alan Burga');
   const catalog=(await a.agent.get('/api/profile/location-catalog').expect(200)).body;
   const bellavista=catalog.ubigeos.find(row=>row.code==='070102');

@@ -1,21 +1,22 @@
+import {profileNamesSelect,identityView,withUserIdentity} from '../profile/identity.js';
 import { z } from 'zod';
 import { requireEventManager, lockManagedEvent, teamSummary } from '../teams/event-access.js';
 import { enrollmentInput, correctionInput, reviewInput, validateParticipant, audit, fail, paymentCodes, reservedStates } from './policy.js';
 
 const uuid = z.uuid();
-const person = { id: true, username: true, name: true, lastName: true, email: true };
+const person = { id: true, username: true, name: true, lastName: true, email: true, ...profileNamesSelect };
 export function createCategoryRegistrations({ database: db, commerce, registrationsFor, paymentsFor, files }) {
   async function accessible(database, user, id, manager = false) {
     uuid.parse(id);
     const r = await database.eventRegistration.findUnique({ where: { id }, include: { event: { include: { team: { select: teamSummary } } }, user: { select: person } } });
-    if (!r?.categoryId) fail('Inscripción no disponible', 'NOT_FOUND', 404);
+    if (!r || (!r.categoryId && !r.guestAccessHash)) fail('Inscripción no disponible', 'NOT_FOUND', 404);
     if (manager || r.userId !== user.id) await requireEventManager(database, user, r.event);
-    return r;
+    return withUserIdentity(r);
   }
   async function openEvent(id) {
     uuid.parse(id);
     const e = await db.event.findUnique({ where: { id }, include: { team: true } });
-    if (!e?.team?.active || e.status !== 'PUBLISHED' || e.startsAt <= new Date()) fail('El evento no acepta inscripciones', 'EVENT_NOT_OPEN');
+    if (!e || e.mode==='INFORMATIONAL' || (e.teamId && !e.team?.active) || e.status !== 'PUBLISHED' || e.startsAt <= new Date()) fail('El evento no acepta inscripciones', 'EVENT_NOT_OPEN');
     return e;
   }
   async function content(fileId) {
@@ -29,12 +30,16 @@ export function createCategoryRegistrations({ database: db, commerce, registrati
     return tx.database.eventRegistration.update({ where: { id: r.id }, data: { status: 'PENDING_REVIEW', reviewNote: null, version: { increment: 1 } } });
   }
   return {
+    async mine(user, eventId) {
+      uuid.parse(eventId);
+      return db.eventRegistration.findUnique({ where: { eventId_userId: { eventId, userId: user.id } }, select: { id: true, status: true } });
+    },
     async options(user, eventId) {
       await openEvent(eventId);
       const [categories, selected, registration] = await Promise.all([
         db.eventCategory.findMany({ where: { eventId, active: true }, orderBy: { createdAt: 'asc' } }),
         db.eventPaymentMethod.findMany({ where: { eventId, method: { active: true } }, include: { method: true } }),
-        db.eventRegistration.findUnique({ where: { eventId_userId: { eventId, userId: user.id } }, select: { id: true, categoryId: true, status: true } }),
+        user?.id ? db.eventRegistration.findUnique({ where: { eventId_userId: { eventId, userId: user.id } }, select: { id: true, categoryId: true, status: true } }) : Promise.resolve(null),
       ]);
       return { categories, methods: selected.map(({ method: m }) => ({ id: m.id, type: m.type, label: m.label, currency: m.currency,
         holder: m.holderName, phone: m.phone, bank: m.bank, accountNumber: m.accountNumber, cci: m.cci, instructions: m.instructions, hasQr: !!m.qrFileId })), registration };
@@ -64,9 +69,9 @@ export function createCategoryRegistrations({ database: db, commerce, registrati
       const r = await accessible(db, user, id);
       const [payments, audits] = await Promise.all([
         db.manualPayment.findMany({ where: { operationId: id }, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }] }),
-        db.registrationAudit.findMany({ where: { registrationId: id }, include: { actor: { select: { username: true, name: true, lastName: true } } }, orderBy: { createdAt: 'asc' } }),
+        db.registrationAudit.findMany({ where: { registrationId: id }, include: { actor: { select: { username: true, name: true, lastName: true, ...profileNamesSelect } } }, orderBy: { createdAt: 'asc' } }),
       ]);
-      return { ...r, payments, audits };
+      return { ...r, payments, audits:audits.map(row=>({...row,actor:identityView(row.actor)})) };
     },
     async resubmit(user, id, raw) {
       uuid.parse(id); const input = correctionInput.parse(raw);
@@ -111,7 +116,7 @@ export function createCategoryRegistrations({ database: db, commerce, registrati
       if (!event) fail('Evento no disponible', 'NOT_FOUND', 404);
       await requireEventManager(db, user, event);
       const where = { eventId, ...(input.status ? { status: input.status } : {}), ...(input.categoryId ? { categoryId: input.categoryId } : {}),
-        ...(input.q ? { user: { OR: ['name','lastName','username','email'].map(key => ({ [key]: { contains: input.q, mode: 'insensitive' } })) } } : {}) };
+        ...(input.q ? { OR: [{ user: { OR: [...['username','email'].map(key=>({[key]:{contains:input.q,mode:'insensitive'}})),{AND:[{profileUserRows:{none:{}}},{OR:['name','lastName'].map(key=>({[key]:{contains:input.q,mode:'insensitive'}}))}]}] } }, {user:{profileUserRows:{some:{OR:['name','lastName'].map(key=>({[key]:{contains:input.q,mode:'insensitive'}}))}}}}, ...['name','lastName','phone'].map(key=>({participantSnapshot:{path:[key],string_contains:input.q}}))] } : {}) };
       const [items, total, groups, categories, categoryCounts, configuration] = await Promise.all([
         db.eventRegistration.findMany({ where, include: { user: { select: person } }, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }], take: 20, skip: input.offset }),
         db.eventRegistration.count({ where }), db.eventRegistration.groupBy({ by: ['status'], where: { eventId }, _count: true }),
@@ -120,7 +125,7 @@ export function createCategoryRegistrations({ database: db, commerce, registrati
         db.eventRegistrationConfig.findUnique({ where: { eventId } }),
       ]);
       const occupied = groups.filter(g => reservedStates.includes(g.status)).reduce((sum,g) => sum + g._count, 0);
-      return { items, total, nextOffset: input.offset + items.length < total ? input.offset + 20 : null,
+      return { items:items.map(withUserIdentity), total, nextOffset: input.offset + items.length < total ? input.offset + 20 : null,
         summary: { statuses: Object.fromEntries(groups.map(g => [g.status,g._count])), occupied, capacity: configuration?.maxCapacity ?? null },
         categories: categories.map(c => ({ ...c, occupied: categoryCounts.find(g => g.categoryId === c.id)?._count || 0 })) };
     },

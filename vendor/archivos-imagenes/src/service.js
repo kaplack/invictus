@@ -6,11 +6,12 @@ export function createFileService({ repository, storage, policy: options, signin
   const policy = filePolicy(options);
   if (Buffer.byteLength(signingKey) < 32) throw new Error('File signing key must have at least 32 bytes');
   const fail = () => { throw new AppError('Archivo no disponible', 404, 'FILE_NOT_FOUND'); };
+  const owns = (file,user) => file.ownerId ? file.ownerId === user?.id : !!user?.guestAccessHash && file.guestAccessHash === user.guestAccessHash;
   const dto = f => ({ id: f.id, name: f.name, contentType: f.contentType, size: f.size, visibility: f.visibility, createdAt: f.createdAt });
   async function find(id, user, ownerOnly = false) {
     if (!/^[a-f0-9-]{36}$/.test(id)) return fail();
     const file = await repository.find(id);
-    if (!file || file.deletedAt || ((ownerOnly || file.visibility === 'private') && file.ownerId !== user?.id)) return fail();
+    if (!file || file.deletedAt || ((ownerOnly || file.visibility === 'private') && !owns(file,user))) return fail();
     return file;
   }
   const sign = (file, expires) => createHmac('sha256', signingKey).update(`${file.id}:${file.ownerId}:${expires}`).digest('hex');
@@ -23,12 +24,13 @@ export function createFileService({ repository, storage, policy: options, signin
       return dto(file);
     },
     async upload(user, input) {
-      if (!user?.id) throw new AppError('Debes iniciar sesión', 401, 'AUTHENTICATION_REQUIRED');
+      if (!user?.id && !/^[a-f0-9]{64}$/.test(user?.guestAccessHash || '')) throw new AppError('Debes iniciar sesión', 401, 'AUTHENTICATION_REQUIRED');
       validateFile(input, policy);
+      if (!user.id && input.visibility !== 'private') throw new AppError('El comprobante debe ser privado',400,'INVALID_VISIBILITY');
       const id = randomUUID();
-      const file = { id, ownerId: user.id, key: id, name: input.name, contentType: input.contentType,
+      const file = { id, ownerId: user.id || null, ...(user.id ? {} : {guestAccessHash:user.guestAccessHash}), key: id, name: input.name, contentType: input.contentType,
         size: input.body.length, visibility: input.visibility, createdAt: new Date(now()), deletedAt: null };
-      await storage.put({ key: id, body: input.body, contentType: file.contentType, ownerId: user.id });
+      await storage.put({ key: id, body: input.body, contentType: file.contentType, ownerId: user.id || "guest" });
       try { await repository.create(file); }
       catch (error) { await storage.remove(id).catch(() => {}); throw error; }
       return dto(file);

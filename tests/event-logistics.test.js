@@ -1,0 +1,34 @@
+import test from 'node:test';import assert from 'node:assert/strict';import request from 'supertest';import {randomUUID} from 'node:crypto';
+import {PrismaClient,Prisma} from '../prisma/client/index.js';import {createApp} from '../server/app.js';import {readConfig} from '../server/config.js';
+const url=new URL(process.env.TEST_DATABASE_URL);if(!['localhost','127.0.0.1'].includes(url.hostname)||url.pathname!=='/invictus_test')throw Error('Solo invictus_test local');
+const db=new PrismaClient({datasources:{db:{url:url.href}}}),origin='http://localhost:5173';const app=await createApp({database:db,Prisma,config:readConfig({...process.env,DATABASE_URL:url.href,NODE_ENV:'test',STORAGE_DRIVER:'local',WEB_ORIGINS:origin,UPLOAD_DIRECTORY:'.local/test-uploads'})});test.after(()=>db.$disconnect());
+const send=(a,m,p,b={})=>a[m]('/api'+p).set('Origin',origin).send(b);
+async function account(){const a=request.agent(app);await send(a,'post','/auth/register',{username:'test_'+randomUUID().replaceAll('-','').slice(0,24),email:randomUUID()+'@example.test',password:'Invictus-Test-2026!'}).expect(201);await send(a,'put','/profile',{name:'Ana',lastName:'Logística',documentType:'DNI',documentNumber:'12345678',phone:'+51999111222'}).expect(200);return a;}
+const upload=async(a,visibility='public')=>(await a.post('/api/files').set('Origin',origin).set('Content-Type','image/png').set('X-File-Name','route.png').set('X-File-Visibility',visibility).send(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jA1sAAAAASUVORK5CYII=','base64')).expect(201)).body.file.id;
+test('Logística opcional: borrador, validación, imágenes seguras, publicación y compatibilidad',async()=>{
+ const owner=await account(),other=await account();
+ const event=(await send(owner,'post','/events/mine',{title:'Logística '+randomUUID(),description:'Evento de prueba',startsAt:'2099-10-31T13:00:00.000Z',timeZone:'America/Lima',venue:'Lima'}).expect(201)).body;
+ const path='/events/mine/'+event.id;
+ assert.equal(event.kitEnabled,false);assert.equal(event.routeImageFileId,null);
+ await send(owner,'patch',path,{kitEnabled:true,kitVenue:'Club'}).expect(200);await send(owner,'post',path+'/publish').expect(409);
+ await send(owner,'patch',path,{kitTimeFrom:'18:00',kitTimeTo:'17:00'}).expect(400);
+ const foreign=await upload(other),privateId=await upload(owner,'private'),route=await upload(owner);
+ await send(owner,'patch',path,{routeImageFileId:foreign}).expect(404);await send(owner,'patch',path,{routeImageFileId:privateId}).expect(400);
+ await send(other,'patch',path,{kitEnabled:false}).expect(403);
+ const logistics={meetingAt:'2099-10-31T11:00:00.000Z',meetingVenue:'',kitEnabled:true,kitDateFrom:'2099-10-29',kitDateTo:'2099-10-30',kitTimeFrom:'16:00',kitTimeTo:'20:00',kitVenue:'Club · Dirección de prueba',kitInstructions:'Traer DNI y comprobante',routeImageFileId:route};
+ await send(owner,'patch',path,{kitDateFrom:'2099-10-30',kitDateTo:'2099-10-29'}).expect(400);
+ await send(owner,'patch',path,logistics).expect(200);await send(owner,'patch',path,{description:'Información actualizada'}).expect(200);
+ const managed=(await owner.get('/api'+path).expect(200)).body;assert.equal(managed.meetingAt,logistics.meetingAt);assert.equal(managed.routeImageFileId,route);
+ await send(owner,'delete','/files/'+route).expect(409);
+ await send(owner,'post',path+'/publish').expect(200);const detail=(await request(app).get('/api/events/public/'+event.publicSlug).expect(200)).body;
+ for(const key of ['meetingAt','kitTimeFrom','kitTimeTo','kitVenue','kitInstructions','routeImageFileId'])assert.equal(detail[key],logistics[key]);
+ await send(owner,'patch',path,{meetingAt:'2099-10-30T11:00:00.000Z'}).expect(409);
+ await send(owner,'patch',path,{meetingAt:'2099-10-31T14:00:00.000Z'}).expect(409);
+ await send(owner,'patch',path,{meetingAt:null}).expect(200);
+ assert.equal((await request(app).get('/api/events/public/'+event.publicSlug).expect(200)).body.meetingAt,null);
+ await send(owner,'patch',path,{kitVenue:''}).expect(409);assert.equal((await owner.get('/api'+path).expect(200)).body.kitVenue,logistics.kitVenue);
+ assert.equal(detail.kitDateFrom.slice(0,10),logistics.kitDateFrom);assert.equal(detail.kitDateTo.slice(0,10),logistics.kitDateTo);
+ await send(owner,'patch',path,{kitEnabled:false,routeImageFileId:null}).expect(200);assert.equal((await request(app).get('/api/events/public/'+event.publicSlug).expect(200)).body.routeImageFileId,null);
+ const legacy=(await send(owner,'post','/events/mine',{title:'Sin logística '+randomUUID(),description:'Evento sencillo',startsAt:'2099-11-01T13:00:00.000Z',timeZone:'America/Lima',venue:'Lima'}).expect(201)).body;
+ await send(owner,'post','/events/mine/'+legacy.id+'/publish').expect(200);assert.equal((await request(app).get('/api/events/public/'+legacy.publicSlug).expect(200)).body.kitEnabled,false);
+});

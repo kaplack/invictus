@@ -1,3 +1,4 @@
+import {visibleCapabilities} from "../app/capabilities.js";
 import React, {useEffect, useId, useRef, useState} from 'react';
 
 export default function MainNavigation({route}) {
@@ -37,9 +38,9 @@ export default function MainNavigation({route}) {
     <nav id={panelId} className={`main-navigation-links${open ? ' is-open' : ''}`} aria-label="Principal" onClick={event => {
       if (event.target.closest('a')) { setOpen(false); if (window.matchMedia('(max-width: 1100px)').matches) trigger.current?.focus(); }
     }}>
-      <a href="#/teams" aria-current={(route === "/teams" || route.startsWith("/teams/")) ? "page" : undefined}>Teams</a>
-      <a href="#/eventos" aria-current={route.startsWith('/eventos') ? 'page' : undefined}>Eventos</a>
-      <a href="#/tienda" aria-current={route === "/tienda" ? "page" : undefined}>Tienda</a>
+      {visibleCapabilities.teams && <a href="/teams" aria-current={(route === "/teams" || route.startsWith("/teams/")) ? "page" : undefined}>Teams</a>}
+      <a href="/" aria-current={(route==='/'||route.startsWith('/eventos')) ? 'page' : undefined}>Eventos</a>
+      {visibleCapabilities.commerce && <a href="/tienda" aria-current={route === "/tienda" ? "page" : undefined}>Tienda</a>}
     </nav>
   </div>;
 }

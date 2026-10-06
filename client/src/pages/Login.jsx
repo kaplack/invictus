@@ -1,3 +1,4 @@
+import {navigate} from '../services/navigation.js';
 import React, { useId, useState } from 'react';
 import { api } from '../services/api.js';
 import { useAction } from '../hooks/data.js';
@@ -12,8 +13,8 @@ export function Login({ onSession, redirect = '/cuenta', allowRegister = true })
       <div className="auth-story-content">
         <p className="auth-kicker">TU HISTORIA EMPIEZA AQUÍ</p>
         <h1>El próximo desafío<br/>empieza <em>contigo.</em></h1>
-        <p>Encuentra tu Team, participa en eventos y comparte tu pasión por el deporte.</p>
-        {allowRegister && <a className="auth-explore" href="#/teams">Conoce la comunidad <span aria-hidden="true">↗</span></a>}
+        <p>Encuentra eventos y organiza tu próximo desafío.</p>
+        {allowRegister && <a className="auth-explore" href="/">Explorar eventos <span aria-hidden="true">↗</span></a>}
       </div>
       <p className="auth-story-caption">CADA EVENTO TERMINA. EL ESFUERZO PERMANECE.</p>
     </div>
@@ -46,7 +47,7 @@ function AuthForm({ register, setRegister, allowRegister, onSession, redirect })
     action.run(async () => {
       const result = await api('/auth/' + (register ? 'register' : 'login'), 'POST', body);
       onSession(result.user);
-      location.hash = redirect;
+      navigate(redirect);
       return result;
     }, 'Sesión iniciada.').then(result => { if (register && !result) availability.retry(); });
   }}>
