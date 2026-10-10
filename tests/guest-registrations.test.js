@@ -9,7 +9,7 @@ const url = new URL(process.env.TEST_DATABASE_URL);
 if (!['localhost','127.0.0.1'].includes(url.hostname) || url.pathname !== '/invictus_test') throw new Error('Solo invictus_test local');
 const db = new PrismaClient({ datasources: { db: { url: url.href } } });
 const origin = 'http://localhost:5173';
-const app = await createApp({ database: db, Prisma, config: readConfig({ ...process.env, DATABASE_URL: url.href, NODE_ENV: 'test', STORAGE_DRIVER: 'local', WEB_ORIGINS: origin, UPLOAD_DIRECTORY: '.local/test-uploads' }) });
+const app = await createApp({ database: db, Prisma, config: readConfig({ ...process.env, DATABASE_URL: url.href, NODE_ENV: 'test', STORAGE_DRIVER: 'local', WEB_ORIGINS: origin, UPLOAD_DIRECTORY:process.env.EVENT_TEST_UPLOAD_DIRECTORY||'.local/test-uploads' }) });
 test.after(() => db.$disconnect());
 const send = (a, method, path, body = {}) => a[method]('/api' + path).set('Origin',origin).send(body);
 async function account(role = 'USER') {
@@ -40,7 +40,7 @@ test('invitados: privacidad, idempotencia, cupos, observación/corrección y con
  const otherToken=(await send(other,'post','/events/'+event.id+'/guest-registration-token').expect(201)).body.token;
  const gsend=(t,path,body)=>request(app).post('/api'+path).set('Origin',origin).set('X-Registration-Token',t).send(body);
  const upload=async(t)=> (await request(app).post('/api/events/'+event.id+'/guest-proof').set('Origin',origin).set('X-Registration-Token',t).set('Content-Type','image/png').set('X-File-Name','proof.png').send(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jA1sAAAAASUVORK5CYII=','base64')).expect(201)).body.file.id;
- const person={name:'Luis',lastName:'Invitado',phone:'999555666'};
+ const person={name:'Luis',lastName:'Invitado',phone:'999555666',birthDate:'2000-01-01'};
  const path='/events/'+event.id+'/guest-registrations';
  const input={categoryId:category.id,methodId:method.id,participant:person};
  await gsend(token,path,input).expect(400);
@@ -86,7 +86,7 @@ test('invitado: evento gratuito sin categorías permite revisión en consola',as
  const event=(await send(owner.agent,'post','/events/mine',{title:'Gratis '+randomUUID(),description:'Evento gratuito',startsAt:'2027-09-01T14:00:00Z',timeZone:'America/Lima',venue:'Lima',maxCapacity:1}).expect(201)).body;
  await send(owner.agent,'post','/events/mine/'+event.id+'/publish').expect(200);
  const token=(await send(request(app),'post','/events/'+event.id+'/guest-registration-token').expect(201)).body.token;
- const r=(await request(app).post('/api/events/'+event.id+'/guest-registrations').set('Origin',origin).set('X-Registration-Token',token).send({participant:{name:'Luis',lastName:'Gratis',phone:'999555666'}}).expect(201)).body;
+ const r=(await request(app).post('/api/events/'+event.id+'/guest-registrations').set('Origin',origin).set('X-Registration-Token',token).send({participant:{name:'Luis',lastName:'Gratis',phone:'999555666',birthDate:'2000-01-01'}}).expect(201)).body;
  await owner.agent.get('/api/registrations/'+r.id).expect(200);
  await send(owner.agent,'post','/registrations/'+r.id+'/review',{version:2,decision:'CONFIRMED'}).expect(200);
  assert.equal((await request(app).get('/api/guest-registration').set('X-Registration-Token',token).expect(200)).body.status,'CONFIRMED');

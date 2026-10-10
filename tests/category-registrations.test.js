@@ -9,7 +9,7 @@ const url = new URL(process.env.TEST_DATABASE_URL);
 if (!['localhost','127.0.0.1'].includes(url.hostname) || url.pathname !== '/invictus_test') throw new Error('Solo invictus_test local');
 const db = new PrismaClient({ datasources: { db: { url: url.href } } });
 const origin = 'http://localhost:5173';
-const app = await createApp({ database: db, Prisma, config: readConfig({ ...process.env, DATABASE_URL: url.href, NODE_ENV: 'test', STORAGE_DRIVER: 'local', WEB_ORIGINS: origin, UPLOAD_DIRECTORY: '.local/test-uploads' }) });
+const app = await createApp({ database: db, Prisma, config: readConfig({ ...process.env, DATABASE_URL: url.href, NODE_ENV: 'test', STORAGE_DRIVER: 'local', WEB_ORIGINS: origin, UPLOAD_DIRECTORY:process.env.EVENT_TEST_UPLOAD_DIRECTORY||'.local/test-uploads' }) });
 test.after(() => db.$disconnect());
 const send = (a, method, path, body = {}) => a[method]('/api' + path).set('Origin',origin).send(body);
 async function account(role = 'USER') {
@@ -138,7 +138,7 @@ test('evento personal: Yape/Plin, QR privado, pago pendiente, confirmación y ai
  assert.equal(options.methods.length,2);assert.ok(options.methods.some(m=>m.id===plin.id));
  await participant.agent.get('/api/events/'+event.id+'/payment-methods/'+yape.id+'/qr').expect(200);
  await request(app).get('/api/files/'+qrFileId+'/public').expect(404);
- const participantData={phone:'999111222'};
+ const participantData={phone:'999111222',birthDate:'2000-01-01'};
  await send(participant.agent,'post','/events/'+event.id+'/register',{categoryId:category.id,methodId:yape.id,participant:participantData}).expect(400);
  assert.equal(await db.eventRegistration.count({where:{eventId:event.id}}),0);
  const registration=(await send(participant.agent,'post','/events/'+event.id+'/register',{categoryId:category.id,methodId:plin.id,participant:participantData,proofFileId:await proof(participant)}).expect(201)).body;
@@ -150,10 +150,9 @@ test('evento personal: Yape/Plin, QR privado, pago pendiente, confirmación y ai
  await send(outsider.agent,'post','/registrations/'+registration.id+'/review',{version:registration.version,decision:'CONFIRMED'}).expect(403);
  const confirmed=(await send(owner.agent,'post','/registrations/'+registration.id+'/review',{version:registration.version,decision:'CONFIRMED'}).expect(200)).body;
  assert.equal(confirmed.status,'CONFIRMED');
- await send(owner.agent,'post','/events/mine/'+event.id+'/unpublish').expect(200);
+ await send(owner.agent,'post','/events/mine/'+event.id+'/unpublish').expect(409);
  await send(owner.agent,'put',path+'/'+yape.id,{...yapeData,phone:'999000111'}).expect(409);
  await send(owner.agent,'put','/events/'+event.id+'/categories/'+category.id,{name:'5K',priceCents:1}).expect(409);
- await send(owner.agent,'post','/events/mine/'+event.id+'/publish').expect(200);
  const freeRegistration=(await send(freeParticipant.agent,'post','/events/'+event.id+'/register',{categoryId:free.id,participant:participantData}).expect(201)).body;
  assert.equal(freeRegistration.status,'PENDING_REVIEW');assert.equal(await db.paymentOperation.findUnique({where:{id:freeRegistration.id}}),null);
  assert.deepEqual((await db.paymentOperation.findUnique({where:{id:registration.id}})).instructions,operation.instructions);

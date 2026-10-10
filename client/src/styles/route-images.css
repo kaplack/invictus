@@ -1,0 +1,9 @@
+.route-images-editor{display:grid;gap:1rem}.route-image-entry{min-width:0;border:1px solid var(--border,#264451);border-radius:8px;padding:1rem;display:grid;gap:1rem}.route-image-entry label{display:grid;gap:.4rem}.route-image-actions{display:flex;flex-wrap:wrap;gap:.5rem}.event-route-gallery{display:grid;gap:1.5rem}.event-route-gallery figure{margin:0;min-width:0}.event-route-gallery figcaption{display:grid;gap:.5rem;padding-top:.75rem}.event-route-gallery p{white-space:pre-line;overflow-wrap:anywhere}.event-route-gallery h3{overflow-wrap:anywhere}
+
+/* Especificidad suficiente frente al reset de fieldsets del editor. */
+.route-image-list{display:grid;gap:24px;margin-inline-start:16px;min-width:0}
+.route-images-editor .route-image-entry{margin:0;padding:20px;border:1px solid var(--landing-line,var(--line));border-radius:10px;background:var(--landing-bg,var(--paper));min-width:0;gap:16px}
+.route-images-editor .route-image-heading{margin:0;padding-bottom:16px;border-bottom:1px solid var(--landing-line,var(--line));font-size:18px;line-height:1.4;font-weight:700;color:var(--landing-text,var(--black))}
+.route-images-editor .route-image-entry label{font-size:14px;font-weight:500}
+.event-editor-optional:has(.route-images-editor)>summary,.event-modal-form details:has(.route-images-editor)>summary{font-size:18px;line-height:1.4;font-weight:700}
+@media(max-width:600px){.route-image-list{margin-inline-start:8px;gap:20px}.route-images-editor .route-image-entry{padding:16px}.route-images-editor .route-image-heading{font-size:16px}}

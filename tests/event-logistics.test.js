@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import request from 'supertest';import {randomUUID} from 'node:crypto';
 import {PrismaClient,Prisma} from '../prisma/client/index.js';import {createApp} from '../server/app.js';import {readConfig} from '../server/config.js';
 const url=new URL(process.env.TEST_DATABASE_URL);if(!['localhost','127.0.0.1'].includes(url.hostname)||url.pathname!=='/invictus_test')throw Error('Solo invictus_test local');
-const db=new PrismaClient({datasources:{db:{url:url.href}}}),origin='http://localhost:5173';const app=await createApp({database:db,Prisma,config:readConfig({...process.env,DATABASE_URL:url.href,NODE_ENV:'test',STORAGE_DRIVER:'local',WEB_ORIGINS:origin,UPLOAD_DIRECTORY:'.local/test-uploads'})});test.after(()=>db.$disconnect());
+const db=new PrismaClient({datasources:{db:{url:url.href}}}),origin='http://localhost:5173';const app=await createApp({database:db,Prisma,config:readConfig({...process.env,DATABASE_URL:url.href,NODE_ENV:'test',STORAGE_DRIVER:'local',WEB_ORIGINS:origin,UPLOAD_DIRECTORY:process.env.EVENT_TEST_UPLOAD_DIRECTORY||'.local/test-uploads'})});test.after(()=>db.$disconnect());
 const send=(a,m,p,b={})=>a[m]('/api'+p).set('Origin',origin).send(b);
 async function account(){const a=request.agent(app);await send(a,'post','/auth/register',{username:'test_'+randomUUID().replaceAll('-','').slice(0,24),email:randomUUID()+'@example.test',password:'Invictus-Test-2026!'}).expect(201);await send(a,'put','/profile',{name:'Ana',lastName:'Logística',documentType:'DNI',documentNumber:'12345678',phone:'+51999111222'}).expect(200);return a;}
 const upload=async(a,visibility='public')=>(await a.post('/api/files').set('Origin',origin).set('Content-Type','image/png').set('X-File-Name','route.png').set('X-File-Visibility',visibility).send(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jA1sAAAAASUVORK5CYII=','base64')).expect(201)).body.file.id;
@@ -31,4 +31,50 @@ test('Logística opcional: borrador, validación, imágenes seguras, publicació
  await send(owner,'patch',path,{kitEnabled:false,routeImageFileId:null}).expect(200);assert.equal((await request(app).get('/api/events/public/'+event.publicSlug).expect(200)).body.routeImageFileId,null);
  const legacy=(await send(owner,'post','/events/mine',{title:'Sin logística '+randomUUID(),description:'Evento sencillo',startsAt:'2099-11-01T13:00:00.000Z',timeZone:'America/Lima',venue:'Lima'}).expect(201)).body;
  await send(owner,'post','/events/mine/'+legacy.id+'/publish').expect(200);assert.equal((await request(app).get('/api/events/public/'+legacy.publicSlug).expect(200)).body.kitEnabled,false);
+});
+
+test('Galería de rutas: múltiples imágenes, orden, texto, permisos y retiro',async()=>{
+ const owner=await account(),other=await account();
+ const first=await upload(owner),second=await upload(owner),foreign=await upload(other),privateId=await upload(owner,'private');
+ const routes=[{fileId:first,title:'Nado · 3 km',description:'Salida en la playa'},{fileId:second,title:'Nado · 10 km',description:'Circuito largo'}];
+ const event=(await send(owner,'post','/events/mine',{title:'Rutas '+randomUUID(),description:'Dos recorridos',startsAt:'2099-11-01T13:00:00.000Z',venue:'Lima',routeImages:routes}).expect(201)).body;
+ const path='/events/mine/'+event.id;
+ assert.deepEqual(event.routeImages,routes);
+ await send(owner,'patch',path,{routeImages:[{...routes[0],fileId:foreign}]}).expect(404);
+ await send(owner,'patch',path,{routeImages:[{...routes[0],fileId:privateId}]}).expect(400);
+ await send(owner,'patch',path,{routeImages:[{...routes[0],title:' '}]}).expect(400);
+ await send(other,'patch',path,{routeImages:[]}).expect(403);
+ await send(owner,'delete','/files/'+second).expect(409);
+ await send(owner,'patch',path,{description:'Texto actualizado'}).expect(200);
+ assert.deepEqual((await owner.get('/api'+path).expect(200)).body.routeImages,routes);
+ await send(owner,'patch',path,{routeImages:[routes[1],routes[0]]}).expect(200);
+ await send(owner,'post',path+'/publish').expect(200);
+ const detail=(await request(app).get('/api/events/public/'+event.publicSlug).expect(200)).body;
+ assert.deepEqual(detail.routeImages,[routes[1],routes[0]]);
+ assert.equal(detail.routeImageFileId,second);
+ await send(owner,'patch',path,{routeImages:[routes[0]]}).expect(200);
+ await send(owner,'delete','/files/'+second).expect(204);
+ await send(owner,'patch',path,{routeImages:[]}).expect(200);
+ const empty=(await request(app).get('/api/events/public/'+event.publicSlug).expect(200)).body;
+ assert.deepEqual(empty.routeImages,[]);assert.equal(empty.routeImageFileId,null);
+});
+
+test('Tiempo límite: creación, edición, retiro, validación, publicación y kits',async()=>{
+ const owner=await account();const input={title:'Tiempo '+randomUUID(),description:'Confraternidad',startsAt:'2099-11-01T13:00:00.000Z',venue:'Lima'};
+ const create=async extra=>(await send(owner,'post','/events/mine',{...input,...extra}).expect(201)).body;
+ const none=await create({});assert.equal(none.timeLimitMinutes,null);
+ const three=await create({timeLimitMinutes:180});assert.equal(three.timeLimitMinutes,180);
+ const half=await create({timeLimitMinutes:90});assert.equal(half.timeLimitMinutes,90);
+ const path='/events/mine/'+three.id;
+ await send(owner,'patch',path,{timeLimitMinutes:90}).expect(200);
+ await send(owner,'patch',path,{description:'Cambio sin modificar tiempo'}).expect(200);
+ assert.equal((await owner.get('/api'+path).expect(200)).body.timeLimitMinutes,90);
+ for(const value of [0,-1,1.5,'90',2147483648]){await send(owner,'patch',path,{timeLimitMinutes:value}).expect(400);}
+ await send(owner,'post','/events/mine',{...input,timeLimitMinutes:0}).expect(400);
+ assert.equal((await owner.get('/api'+path).expect(200)).body.timeLimitMinutes,90);
+ await send(owner,'patch',path,{kitEnabled:true,kitDateFrom:'2099-10-31',kitDateTo:'2099-10-31',kitTimeFrom:'09:00',kitTimeTo:'18:00',kitVenue:'Club'}).expect(200);
+ await send(owner,'post',path+'/publish').expect(200);
+ const detail=(await request(app).get('/api/events/public/'+three.publicSlug).expect(200)).body;assert.equal(detail.timeLimitMinutes,90);assert.equal(detail.kitEnabled,true);assert.equal(detail.kitVenue,'Club');
+ await send(owner,'patch',path,{timeLimitMinutes:null}).expect(200);assert.equal((await request(app).get('/api/events/public/'+three.publicSlug).expect(200)).body.timeLimitMinutes,null);
+ const {timeLimitMinutes,formatTimeLimit}=await import('../client/src/helpers/time-limit.js');assert.equal(timeLimitMinutes(true,'3','0'),180);assert.equal(timeLimitMinutes(true,'1','30'),90);assert.equal(timeLimitMinutes(false,'',''),null);for(const [h,m] of [['0','0'],['-1','30'],['1.5','0'],['0','60'],['0','-1']])assert.throws(()=>timeLimitMinutes(true,h,m));assert.equal(formatTimeLimit(180),'3 h 00 min');
 });

@@ -2,3 +2,5 @@ export {createEventService} from './service.js'; export {createMemoryEventStore}
 
 export { createPrismaEventStore } from './prisma-store.js';
 export { createRegistrationEventReader } from './registration-reader.js';
+
+export {competitionConfigInput,modalitiesInput} from './competition.js';

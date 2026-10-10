@@ -9,7 +9,7 @@ export function createCategoryRegistrations({ database: db, commerce, registrati
   async function accessible(database, user, id, manager = false) {
     uuid.parse(id);
     const r = await database.eventRegistration.findUnique({ where: { id }, include: { event: { include: { team: { select: teamSummary } } }, user: { select: person } } });
-    if (!r || (!r.categoryId && !r.guestAccessHash)) fail('Inscripción no disponible', 'NOT_FOUND', 404);
+    if (!r || (!r.categoryId && !r.guestAccessHash && !r.participantSnapshot)) fail('Inscripción no disponible', 'NOT_FOUND', 404);
     if (manager || r.userId !== user.id) await requireEventManager(database, user, r.event);
     return withUserIdentity(r);
   }
@@ -35,13 +35,13 @@ export function createCategoryRegistrations({ database: db, commerce, registrati
       return db.eventRegistration.findUnique({ where: { eventId_userId: { eventId, userId: user.id } }, select: { id: true, status: true } });
     },
     async options(user, eventId) {
-      await openEvent(eventId);
+      const event=await openEvent(eventId);
       const [categories, selected, registration] = await Promise.all([
         db.eventCategory.findMany({ where: { eventId, active: true }, orderBy: { createdAt: 'asc' } }),
         db.eventPaymentMethod.findMany({ where: { eventId, method: { active: true } }, include: { method: true } }),
         user?.id ? db.eventRegistration.findUnique({ where: { eventId_userId: { eventId, userId: user.id } }, select: { id: true, categoryId: true, status: true } }) : Promise.resolve(null),
       ]);
-      return { categories, methods: selected.map(({ method: m }) => ({ id: m.id, type: m.type, label: m.label, currency: m.currency,
+      return { competitionConfig:event.competitionConfig, categories, methods: selected.map(({ method: m }) => ({ id: m.id, type: m.type, label: m.label, currency: m.currency,
         holder: m.holderName, phone: m.phone, bank: m.bank, accountNumber: m.accountNumber, cci: m.cci, instructions: m.instructions, hasQr: !!m.qrFileId })), registration };
     },
     async optionQr(user, eventId, methodId) {
@@ -55,11 +55,11 @@ export function createCategoryRegistrations({ database: db, commerce, registrati
       return commerce.run(null, async tx => {
         const previous = await tx.database.eventRegistration.findUnique({ where: { eventId_userId: { eventId, userId: user.id } } });
         if (previous) {
-          if (previous.categoryId !== input.categoryId || previous.methodId !== input.methodId) fail('Ya tienes una inscripción para este evento', 'DUPLICATE_REGISTRATION');
+          if (previous.categoryId !== input.categoryId || previous.methodId !== input.methodId || (previous.categorySnapshot?.classification?.modality??null)!==input.modality) fail('Ya tienes una inscripción para este evento', 'DUPLICATE_REGISTRATION');
           return previous;
         }
         const r = await registrationsFor(tx.database).service.create(user, eventId, input);
-        if (!r.categoryId) fail('Este evento usa inscripción general', 'INVALID_INPUT', 400);
+
         if (r.amountCents > 0) await paymentsFor(tx.database).register(user, r.id, { method: paymentCodes[r.paymentInstructionsSnapshot.type], proofFileId: input.proofFileId });
         else await pending(tx, r, user.id);
         return tx.database.eventRegistration.findUnique({ where: { id: r.id } });
@@ -80,8 +80,8 @@ export function createCategoryRegistrations({ database: db, commerce, registrati
         if (r.userId !== user.id) fail('Solo el participante puede corregir la inscripción', 'FORBIDDEN', 403);
         if (r.status !== 'OBSERVED' || r.version !== input.version) fail('La inscripción cambió; vuelve a cargarla', 'STALE_REGISTRATION');
         if (['CANCELLED','FINISHED','CLOSED'].includes(r.event.status)) fail('El evento está cerrado');
-        validateParticipant(r.categorySnapshot, input.participant, r.categorySnapshot.eventDate);
-        const corrected = await tx.database.eventRegistration.update({ where: { id }, data: { participantSnapshot: { ...r.participantSnapshot, ...input.participant } } });
+        const categorySnapshot=validateParticipant(r.categorySnapshot, input.participant, r.categorySnapshot.eventDate);
+        const corrected = await tx.database.eventRegistration.update({ where: { id }, data: {categorySnapshot, participantSnapshot: { ...r.participantSnapshot, ...input.participant } } });
         if (r.amountCents > 0) await paymentsFor(tx.database).register(user, id, { method: paymentCodes[r.paymentInstructionsSnapshot.type], proofFileId: input.proofFileId });
         else {
           if (input.proofFileId) fail('Una inscripción gratuita no requiere comprobante', 'INVALID_INPUT', 400);

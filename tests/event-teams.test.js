@@ -104,11 +104,17 @@ test('evento personal exige Profile completo y conserva propiedad y acceso sin T
   await send(owner.agent,'post','/events/mine/'+event.id+'/publish').expect(200);
   await request(app).get('/api/events/public/'+event.publicSlug).expect(200);
   const registration=(await send(outsider.agent,'post','/events/'+event.id+'/register').expect(201)).body;
-  await send(owner.agent,'patch','/events/mine/'+event.id,{...input,title:'Título actualizado',venue:'Callao'}).expect(200);
+  const renamed=await send(owner.agent,'patch','/events/mine/'+event.id,{...input,title:'Título actualizado',venue:'Callao'}).expect(409);
+  assert.equal(renamed.body.error.code,'CONFIG_IN_USE');
+  await send(owner.agent,'patch','/events/mine/'+event.id,{description:'Información actualizada',venue:'Callao'}).expect(200);
   await send(owner.agent,'patch','/events/mine/'+event.id,{...input,maxCapacity:10}).expect(409);
   await send(owner.agent,'patch','/events/mine/'+event.id,{...input,startsAt:'2027-09-02T14:00:00Z'}).expect(409);
   await send(outsider.agent,'post','/events/mine/'+event.id+'/unpublish').expect(403);
-  await send(owner.agent,'post','/events/mine/'+event.id+'/unpublish').expect(200);
+  const blocked=await send(owner.agent,'post','/events/mine/'+event.id+'/unpublish').expect(409);
+  assert.equal(blocked.body.error.code,'PUBLICATION_LOCKED');
+  await request(app).get('/api/events/public/'+event.publicSlug).expect(200);
+  // Simula un borrador histórico con inscripciones para verificar compatibilidad.
+  await db.event.update({where:{id:event.id},data:{status:'DRAFT',reviewStatus:'DRAFT'}});
   await request(app).get('/api/events/public/'+event.publicSlug).expect(404);
   assert.ok(!(await request(app).get('/api/events').expect(200)).body.some(e=>e.id===event.id));
   assert.equal((await db.eventRegistration.findUnique({where:{id:registration.id}})).status,'CONFIRMED');
@@ -130,7 +136,11 @@ test('informativos: ADMIN crea sin Team, publica, edita y despublica; inscripci�
  await send(participant.agent,'post','/events/manage',input).expect(403);
  await send(organizer.agent,'post','/events/manage',input).expect(403);
  await send(admin.agent,'post','/events/manage',{...input,externalUrl:'javascript:alert(1)'}).expect(400);
+ await send(admin.agent,'post','/events/manage',{...input,publicOrganizerEmail:'incorrecto'}).expect(400);
+ await send(admin.agent,'post','/events/manage',{...input,publicOrganizerPhone:'<script>'}).expect(400);
  const event=(await send(admin.agent,'post','/events/manage',input).expect(201)).body;
+ await send(admin.agent,'patch','/events/manage/'+event.id,{publicOrganizerPhone:'+51 987 654 321',publicOrganizerEmail:'contacto@example.test',meetingAt:'2027-10-02T13:30:00Z',kitEnabled:true,kitDateFrom:'2027-10-01',kitDateTo:'2027-10-01',kitTimeFrom:'09:00',kitTimeTo:'18:00',kitVenue:'Academia',kitInstructions:'Llevar DNI'}).expect(200);
+ await send(admin.agent,'patch','/events/manage/'+event.id,{meetingAt:'2027-10-02T15:00:00Z'}).expect(409);
  assert.equal(event.mode,'INFORMATIONAL');assert.equal(event.teamId,null);assert.equal(event.createdByUserId,admin.user.id);
  await send(admin.agent,'patch','/events/mine/'+event.id,{title:'No permitido',maxCapacity:10}).expect(409);
  assert.equal(await db.eventRegistrationConfig.count({where:{eventId:event.id}}),0);
@@ -138,7 +148,18 @@ test('informativos: ADMIN crea sin Team, publica, edita y despublica; inscripci�
  await send(admin.agent,'post','/events/manage/'+event.id+'/publish').expect(200);
  const detail=(await request(app).get('/api/events/public/'+event.publicSlug).expect(200)).body;
  assert.equal(detail.publicOrganizerName,'Academia externa');assert.equal(detail.externalUrl,input.externalUrl);
- assert.ok((await request(app).get('/api/events').expect(200)).body.some(e=>e.id===event.id&&e.mode==='INFORMATIONAL'));
+
+ assert.equal(detail.publicOrganizerPhone,'+51 987 654 321');assert.equal(detail.publicOrganizerEmail,'contacto@example.test');assert.equal(detail.kitVenue,'Academia');
+ await send(admin.agent,'patch','/events/manage/'+event.id,{publicOrganizerPhone:'',publicOrganizerEmail:''}).expect(200);
+ const cleared=(await request(app).get('/api/events/public/'+event.publicSlug).expect(200)).body;assert.equal(cleared.publicOrganizerPhone,null);assert.equal(cleared.publicOrganizerEmail,null);
+ const catalog=(await request(app).get('/api/events').expect(200)).body;
+ const expected=await db.event.findMany({where:{status:'PUBLISHED'},orderBy:{startsAt:'asc'},take:100,select:{id:true,startsAt:true}});
+ assert.equal(catalog.length,expected.length);
+ const cutoff=expected.at(-1)?.startsAt;
+ for(const row of catalog){assert.ok(new Date(row.startsAt)<=cutoff);}
+ for(const row of expected.filter(row=>row.startsAt<cutoff)){assert.ok(catalog.some(item=>item.id===row.id));}
+ const listed=catalog.find(row=>row.id===event.id);if(listed)assert.equal(listed.mode,'INFORMATIONAL');
+ if(expected.length<100||new Date(input.startsAt)<cutoff)assert.ok(catalog.some(row=>row.id===event.id));
  await send(participant.agent,'post','/events/'+event.id+'/register').expect(409);
  await send(admin.agent,'patch','/events/manage/'+event.id,{...input,title:'Carrera actualizada'}).expect(200);
  await send(admin.agent,'patch','/events/manage/'+event.id,{...input,mode:'MANAGED'}).expect(409);

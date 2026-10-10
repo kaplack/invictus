@@ -1,0 +1,1 @@
+export function classificationLabel(snapshot){const c=snapshot?.classification;return [snapshot?.name,c?.modality,c?.gender==='MALE'?'Masculino':c?.gender==='FEMALE'?'Femenino':null,c?.ageGroup].filter(Boolean).join(' · ')||'General';}

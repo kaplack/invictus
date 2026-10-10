@@ -1,0 +1,27 @@
+import {chromium,expect} from '@playwright/test';
+import {createServer} from 'vite';
+import react from '@vitejs/plugin-react';
+import {mkdir} from 'node:fs/promises';
+import {randomUUID} from 'node:crypto';
+import {PrismaClient,Prisma} from '../prisma/client/index.js';
+import {createApp} from '../server/app.js';
+import {readConfig} from '../server/config.js';
+const url=new URL(process.env.TEST_DATABASE_URL);if(!['localhost','127.0.0.1'].includes(url.hostname)||url.pathname!=='/invictus_test')throw Error('Solo invictus_test local');
+const db=new PrismaClient({datasources:{db:{url:url.href}}}),origin='http://localhost:5177';
+const app=await createApp({database:db,Prisma,config:readConfig({...process.env,DATABASE_URL:url.href,NODE_ENV:'test',STORAGE_DRIVER:'local',WEB_ORIGINS:origin,UPLOAD_DIRECTORY:'test-results/route-uploads'})});
+const server=app.listen(3108);let vite,browser;
+try{
+ vite=await createServer({configFile:false,root:'client',plugins:[react()],server:{host:'localhost',port:5177,strictPort:true,proxy:{'/api':'http://localhost:3108'}}});await vite.listen();
+ browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const headers={Origin:origin};expect((await page.request.post(origin+'/api/auth/register',{headers,data:{username:'ui_'+randomUUID().replaceAll('-','').slice(0,24),email:randomUUID()+'@example.test',password:'Invictus-Test-2026!'}})).status()).toBe(201);
+ expect((await page.request.put(origin+'/api/profile',{headers,data:{name:'Ana',lastName:'Rutas',documentType:'DNI',documentNumber:'12345678',phone:'+51999111222'}})).status()).toBe(200);
+
+ await page.goto(origin+'/mis-eventos/nuevo');const check=page.getByRole('checkbox',{name:'Tiempo límite de competencia',exact:true});await expect(check).not.toBeChecked();await expect(page.getByLabel('Horas',{exact:true})).toHaveCount(0);
+ await page.getByLabel('Nombre del evento',{exact:true}).fill('Tiempo UI '+randomUUID());await page.getByLabel('Descripción',{exact:true}).fill('Confraternidad');await page.getByLabel('Fecha del evento',{exact:true}).fill('2099-11-01');await page.getByLabel('Hora de salida',{exact:true}).fill('08:00');await page.getByLabel('Ubicación del evento',{exact:true}).fill('Lima');
+ await check.check();await page.getByLabel('Horas',{exact:true}).fill('3');await page.getByLabel('Minutos',{exact:true}).fill('0');await mkdir('test-results/time-limit',{recursive:true});await page.screenshot({path:'test-results/time-limit/desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:'test-results/time-limit/mobile.png',fullPage:true});
+ const pending=page.waitForResponse(r=>r.url().endsWith('/api/events/mine')&&r.request().method()==='POST');await page.getByRole('button',{name:'Guardar borrador',exact:true}).click();const response=await pending;expect(response.status()).toBe(201);const event=await response.json();expect(event.timeLimitMinutes).toBe(180);await expect(page).toHaveURL(new RegExp(event.id));await expect(check).toBeChecked();await expect(page.getByLabel('Horas',{exact:true})).toHaveValue('3');
+ await page.getByLabel('Horas',{exact:true}).fill('0');await page.getByRole('button',{name:'Guardar borrador',exact:true}).click();await expect(page.getByRole('alert').filter({hasText:'Ingresa un tiempo límite mayor a cero'})).toBeVisible();expect((await page.request.get(origin+'/api/events/mine/'+event.id)).status()).toBe(200);
+ await page.getByLabel('Horas',{exact:true}).fill('1');await page.getByLabel('Minutos',{exact:true}).fill('30');const patched=page.waitForResponse(r=>r.url().endsWith('/api/events/mine/'+event.id)&&r.request().method()==='PATCH');await page.getByRole('button',{name:'Guardar borrador',exact:true}).click();expect((await (await patched).json()).timeLimitMinutes).toBe(90);
+ await page.getByRole('button',{name:'Paso 3: Revisar y publicar',exact:true}).click();await expect(page.getByText('Tiempo límite de competencia: 1 h 30 min',{exact:true})).toBeVisible();expect((await page.request.post(origin+'/api/events/mine/'+event.id+'/publish',{headers,data:{}})).status()).toBe(200);await page.goto(origin+'/eventos/'+event.publicSlug);await expect(page.locator('.event-detail-facts > div').filter({hasText:'Tiempo límite de competencia'})).toBeVisible();await expect(page.getByText('1 h 30 min',{exact:true})).toBeVisible();await page.screenshot({path:'test-results/time-limit/public-mobile.png',fullPage:true});
+ await page.goto(origin+'/mis-eventos/'+event.id+'/editar');await check.uncheck();await expect(page.getByLabel('Horas',{exact:true})).toHaveCount(0);const clear=page.waitForResponse(r=>r.url().endsWith('/api/events/mine/'+event.id)&&r.request().method()==='PATCH');await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();expect((await (await clear).json()).timeLimitMinutes).toBeNull();await page.goto(origin+'/eventos/'+event.publicSlug);await expect(page.locator('.event-detail-facts > div').filter({hasText:'Tiempo límite de competencia'})).toHaveCount(0);expect(errors).toEqual([]);console.log('Tiempo límite UI: crear, recuperar, cero, editar, revisión, público y desmarcar aprobados; móvil sin overflow.');
+}finally{await browser?.close();await vite?.close();await new Promise(resolve=>server.close(resolve));await db.$disconnect();}

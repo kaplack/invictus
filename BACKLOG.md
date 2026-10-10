@@ -1,6 +1,6 @@
 # Invictus — continuidad
 
-Actualizado: 2026-10-03.
+Actualizado: 2026-10-10.
 
 ## MVP Eventos + Inscripciones — alcance vigente 2026-10-02
 
@@ -293,3 +293,37 @@ Bloqueo de despublicación con inscritos y de publicación/despublicación desde
 - Precisión de horarios: fecha única, ubicación compartida, concentración sin required ni etiqueta opcional y salida; sin migración adicional. Prueba dirigida cubre concentración vacía, día distinto y hora posterior.
 
 - Kits: fechas desde/hasta, horario diario desde/hasta, lugar único e instrucciones; más espacio bajo casilla. Migración aditiva 035 con traslado de datos aplicada en ambas bases locales. Prueba integral dirigida y build web aprobados.
+
+### 2026-10-10 · Galería de rutas del evento
+- Completado: botón «＋ Agregar imagen de ruta», título/descripción por imagen, reemplazo/retiro/orden y galería pública ampliable. Encabezado «Rutas del evento» sin «opcional». Editor compartido para eventos personales e informativos.
+- Migración 20261010001_event_route_images aplicada en invictus e invictus_test locales con traslado de imágenes previas; cliente Prisma regenerado conservando el motor DLL que Windows mantenía ocupado. Pendiente desplegar migración en otros entornos.
+- Verificación mínima: Prisma validate, build web/admin, 2/2 tests dirigidos de logística y recorrido navegador real (agregar dos imágenes, upload, texto, orden, guardar/publicar; 1440/390 sin overflow). Capturas revisadas en test-results/routes. No se amplió la batería por petición del usuario. Detalles: docs/event-logistics.md.
+
+- 2026-10-10 · Jerarquía visual de rutas: tarjetas con borde/fondo y separación, encabezados destacados sin etiqueta duplicada y sangría de 16 px en escritorio / 8 px en móvil. Se corrigió la especificidad frente al reset de fieldsets del editor; tokens con respaldo para administración. Build web/admin aprobado; comprobación visual mínima 1440/390 sin overflow, capturas revisadas. Sin cambios de datos.
+
+### 2026-10-10 · Tiempo límite de competencia
+- Completado checkbox antes de Imagen del evento, horas/minutos, validación frontend/backend y guardado nullable en minutos; edición, retiro y visualización en revisión/ficha pública. Sin rediseño, cronómetros ni cambios de kits.
+- Migración 20261010002_event_time_limit: columna nullable y CHECK positivo; cliente regenerado. Aplicada en invictus_test y posteriormente en invictus local tras verificar. Sin push ni despliegue externo.
+- Pruebas mínimas aprobadas: Prisma validate, build web/admin, 2/2 tests dirigidos (tiempo límite/logística) y recorrido navegador real de tiempo límite, con recuperación/edición/cero/retiro/revisión/público y 1440/390 sin overflow. Capturas revisadas en test-results/time-limit. Detalles en docs/event-logistics.md.
+
+### 2026-10-10 · Dimensiones de competencia — completado y verificado localmente
+- Implementados distancia/precio, modalidades por distancia con reglas de equipamiento, divisiones globales por género y rangos de edad sin superposición. Cupo total del evento; sin precio por modalidad ni cupos nuevos por distancia.
+- Fecha de nacimiento en formularios de inscripción, sin edad calculada visible. Clasificación y reglas se congelan en la inscripción; fuera de rangos se permite participar y se avisa al organizador, que puede observar. Correcciones recalculan la clasificación con las reglas originales.
+- Migración 20261010003_event_competition_dimensions aplicada primero en invictus_test y después en invictus local tras verificar; cliente regenerado. Prisma validate y build web/admin aprobados. Cinco casos dirigidos aprobados: dos nuevos, dos de invitados y uno de pagos personales. Recorrido UI de configuración/recuperación/revisión/publicación, inscripción y aviso al organizador aprobado; capturas 1440/390 revisadas sin overflow. Sin push ni despliegue externo. Ver docs/competition-dimensions.md.
+- Compatibilidad: sin modificación masiva de eventos ni inscripciones históricas; campos previos preservados. Activar nuevas divisiones/modalidades en un borrador convierte su configuración al esquema nuevo; se mantiene el bloqueo con inscritos.
+- Por discutir: precios distintos por modalidad (qué combinación determina tarifa, moneda, presentación y conservación de pagos); cupos por distancia (relación con cupo total, reservas/liberación, concurrencia y representación). No implementados en este incremento.
+- Verificación puntual adicional aprobada: inscripción general con cuenta recoge nacimiento, queda en revisión y permite abrir la corrección desde Mis inscripciones (scripts/check-general-registration-ui.mjs). Build web repetido tras ese ajuste aprobado; build admin previo permanece válido.
+
+
+### Adecuación de modalidades del evento — 2026-10-10
+- Implementado: catálogo de modalidades definido una sola vez durante la creación/edición, junto a las divisiones por género y edad; nombre y reglas de equipamiento.
+- Cada distancia selecciona modalidades mediante casillas. Una nueva modalidad se asigna por defecto a todas las distancias; una nueva distancia recibe todas las modalidades. Renombrar conserva exclusiones y quitar una modalidad elimina sus asignaciones.
+- Persistencia: catálogo en `competitionConfig.modalities`, reutilizando el JSON existente; cada distancia conserva sus modalidades disponibles. Sin migración. Los eventos previos recuperan el catálogo a partir de sus modalidades existentes.
+- Verificación mínima: navegador para selección, exclusiones, renombrado y eliminación; validación backend de catálogo, nombres duplicados/vacíos y configuración histórica; build web aprobado.
+- Siguen pendientes por discutir los precios por modalidad y cupos por distancia.
+
+- Ajuste de orden del editor (2026-10-10): género → edades → modalidades → distancias; conserva la selección predeterminada de modalidades por distancia.
+
+- Rangos de edad compactos (2026-10-10): activar reemplaza el checkbox por «Categorías por edades» y un primer rango; campos Desde/Hasta y papelera en una fila sin recuadro; «+» debajo de cada fila inserta un rango allí. Tooltips accesibles mediante IconAction. Eliminar el último desactiva la división y devuelve el checkbox. Verificación mínima en navegador a 390 px (sin overflow), acciones y tooltip, y build web aprobados.
+
+- Distancias compactas (2026-10-10): sin recuadro, nombre con papelera, precio/modalidades debajo y único «+» con tooltip. Papelera oculta con una sola distancia. Quitar distancias guardadas conserva el registro como inactivo al guardar; inscripciones existentes mantienen el bloqueo de configuración. Navegador móvil y build web aprobados.

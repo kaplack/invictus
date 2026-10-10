@@ -1,3 +1,4 @@
+import {classificationLabel} from '../helpers/registration-classification.js';
 import { userLabel } from '../helpers/user.js';
 import React, { useState } from 'react';
 import { Modal } from './Modal.jsx';
@@ -14,13 +15,13 @@ export default function EventRegistrations({ event, close, embedded = false }) {
     {selected ? <><button className="secondary" onClick={() => setSelected(null)}>← Volver al listado</button><RegistrationDetail key={selected} id={selected} manager changed={r.reload}/></> : <State resource={r}>{data => <>
       <p><strong>Cupos reservados: {data.summary.occupied}{data.summary.capacity !== null ? ` / ${data.summary.capacity}` : ''}</strong>. Incluye pendientes, observadas y aceptadas.</p>
       <p>Pendientes: {data.summary.statuses.PENDING_REVIEW || 0} · Observadas: {data.summary.statuses.OBSERVED || 0} · Confirmadas: {data.summary.statuses.CONFIRMED || 0} · Rechazadas: {data.summary.statuses.REJECTED || 0}</p>
-      {data.categories.length > 0 && <details><summary>Cupos por categoría</summary>{data.categories.map(c => <p key={c.id}>{c.name}: {c.occupied}{c.capacity ? ` / ${c.capacity}` : ' reservados (cupo del evento)'}</p>)}</details>}
+      {data.categories.length > 0 && <details><summary>{event.competitionConfig?'Inscritos por distancia':'Cupos por categoría'}</summary>{data.categories.map(c => <p key={c.id}>{c.name}: {c.occupied}{c.capacity ? ` / ${c.capacity}` : ' reservados (cupo del evento)'}</p>)}</details>}
       <RegistrationFilters categories={data.categories} filters={filters} apply={values=>{setFilters(values);setOffset(0);}} embedded={embedded}/><p>{data.total} inscripciones encontradas.</p>
       <Records items={data.items} columns={[
         { label: 'Participante', render: i => <>{userLabel(i.participantSnapshot || i.user)}<p>{i.participantSnapshot?.phone || i.user?.email || ''}</p></> },
-        { label: 'Categoría', render: i => i.categorySnapshot?.name || 'General' },
+        { label: 'Categoría', render: i => <>{classificationLabel(i.categorySnapshot)}{i.categorySnapshot?.classificationWarning&&<p className="callout">{i.categorySnapshot.classificationWarning}</p>}</> },
         { label: 'Importe y método', render: i => <>{categoryPrice({ priceCents: i.amountCents || 0, currency: i.currency || 'PEN' })}<p>{i.paymentInstructionsSnapshot?.label || 'Sin pago'}</p></> },
-        { label: 'Estado', render: i => (i.categoryId || i.guestAccessHash) ? <RegistrationStatus status={i.status}/> : <Status value={i.status}/> },
+        { label: 'Estado', render: i => (i.categoryId || i.guestAccessHash || i.participantSnapshot) ? <RegistrationStatus status={i.status}/> : <Status value={i.status}/> },
       ]} actions={i => (i.categoryId || i.guestAccessHash) && <button className="secondary" onClick={() => setSelected(i.id)}>Ver y revisar</button>}/>
       {(offset > 0 || data.nextOffset !== null) && <nav className="actions" aria-label="Páginas de inscripciones"><button className="secondary" disabled={!offset} onClick={() => setOffset(Math.max(0,offset-20))}>Anterior</button><span aria-live="polite">Página {offset/20+1} de {Math.max(1,Math.ceil(data.total/20))} · 20 por página</span><button className="secondary" disabled={data.nextOffset === null} onClick={() => setOffset(data.nextOffset)}>Siguiente</button></nav>}
     </>}</State>}

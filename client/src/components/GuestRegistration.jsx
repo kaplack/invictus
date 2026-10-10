@@ -1,3 +1,4 @@
+import {classificationLabel} from '../helpers/registration-classification.js';
 import {navigate} from '../services/navigation.js';
 import React,{useState} from 'react';
 import {api,base} from '../services/api.js';
@@ -13,17 +14,18 @@ function participant(form){const data=new FormData(form);return {name:data.get('
 const key=id=>'guest-registration:'+id;
 export function GuestEnrollment({event,close,initialCategoryId=''}){
  const resource=useData('/events/'+event.id+'/guest-registration-options'),action=useAction();
- const [categoryId,setCategory]=useState(initialCategoryId),[methodId,setMethod]=useState(''),[file,setFile]=useState(null);
+ const [categoryId,setCategory]=useState(initialCategoryId),[methodId,setMethod]=useState(''),[file,setFile]=useState(null),[modality,setModality]=useState('');
  return <Modal title={'Inscribirme · '+event.title} onClose={close} busy={action.busy}><p>No necesitas crear una cuenta.</p><State resource={resource}>{data=>{
- const category=data.categories.length?data.categories.find(c=>c.id===categoryId):general,method=data.methods.find(m=>m.id===methodId);
+ const selected=data.categories.length?(data.categories.length===1?data.categories[0]:data.categories.find(c=>c.id===categoryId)):general,category=selected?{...selected,competitionConfig:data.competitionConfig}:null,method=data.methods.find(m=>m.id===methodId);
  return <form className="form" onSubmit={e=>{e.preventDefault();const person=participant(e.currentTarget);action.run(async()=>{
  let token=sessionStorage.getItem(key(event.id));if(!token){token=(await api('/events/'+event.id+'/guest-registration-token','POST',{})).token;sessionStorage.setItem(key(event.id),token);}
  try{await guestApi(token,'/guest-registration');navigate('/inscripcion/'+token);close();return;}catch(error){if(error.status!==404)throw error;}
  const proofFileId=file&&category.priceCents?await proofUpload(token,event.id,file):null;
- await guestApi(token,'/events/'+event.id+'/guest-registrations','POST',{categoryId:category.id,methodId:category.priceCents?methodId:null,participant:person,proofFileId});navigate('/inscripcion/'+token);close();
+ await guestApi(token,'/events/'+event.id+'/guest-registrations','POST',{categoryId:category.id,modality:modality||null,methodId:category.priceCents?methodId:null,participant:person,proofFileId});navigate('/inscripcion/'+token);close();
  });}}><fieldset className="form" disabled={action.busy}>
- {data.categories.length>0&&<label>Categoría<select required value={categoryId} onChange={e=>{setCategory(e.target.value);setMethod('');setFile(null);}}><option value="">Selecciona una categoría</option>{data.categories.map(c=><option key={c.id} value={c.id}>{c.name} · {categoryPrice(c)}</option>)}</select></label>}
- {category&&<><strong>{categoryPrice(category)}</strong><ParticipantFields key={category.id||'general'} category={category} guest/>
+ {data.categories.length>1&&<label>{data.competitionConfig?'Distancia':'Categoría'}<select aria-label={data.competitionConfig?'Distancia':'Categoría'} required value={categoryId} onChange={e=>{setCategory(e.target.value);setModality('');setMethod('');setFile(null);}}><option value="">{data.competitionConfig?'Selecciona una distancia':'Selecciona una categoría'}</option>{data.categories.map(c=><option key={c.id} value={c.id}>{c.name} · {categoryPrice(c)}</option>)}</select></label>}
+ {data.categories.length===1&&<p><strong>{data.competitionConfig?'Distancia':'Categoría'}:</strong> {data.categories[0].name}</p>}
+      {category&&<><strong>{categoryPrice(category)}</strong><ParticipantFields category={category} guest modalityValue={modality} onModalityChange={setModality}/>
  {category.priceCents>0&&<><label>Medio de pago<select required value={methodId} onChange={e=>{setMethod(e.target.value);setFile(null);}}><option value="">Selecciona un medio</option>{data.methods.filter(m=>m.currency===category.currency).map(m=><option key={m.id} value={m.id}>{m.label} · {paymentTypes[m.type]}</option>)}</select></label>{method&&<><PaymentInstructions method={method} qrPath={'/events/'+event.id+'/guest-payment-methods/'+method.id+'/qr'}/><ProofField key={method.id} required={method.type!=='CASH'} setFile={setFile}/></>}</>}
  <p>Tu inscripción quedará pendiente de revisión. Al enviarla recibirás un enlace privado para consultar el estado.</p><button disabled={category.priceCents>0&&!method}>Enviar inscripción</button></>}
  </fieldset><Feedback state={action}/></form>;
@@ -32,7 +34,7 @@ export function GuestEnrollment({event,close,initialCategoryId=''}){
 export function GuestRegistration({token}){
  const resource=useData('/guest-registration?token='+encodeURIComponent(token)),action=useAction(),[file,setFile]=useState(null),[copied,setCopied]=useState(false);
  const link=location.origin+'/inscripcion/'+token;
- return <section className="public-events"><h1>Tu inscripción</h1><State resource={resource}>{data=><article className="detail"><h2>{data.event.title}</h2><RegistrationStatus status={data.status}/><p>{data.participantSnapshot.name} {data.participantSnapshot.lastName} · {data.categorySnapshot.name}</p><p>{data.participantSnapshot.phone} · {categoryPrice({priceCents:data.amountCents,currency:data.currency})}</p>
+ return <section className="public-events"><h1>Tu inscripción</h1><State resource={resource}>{data=><article className="detail"><h2>{data.event.title}</h2><RegistrationStatus status={data.status}/><p>{data.participantSnapshot.name} {data.participantSnapshot.lastName} · {classificationLabel(data.categorySnapshot)}</p><p>{data.participantSnapshot.phone} · {categoryPrice({priceCents:data.amountCents,currency:data.currency})}</p>
  <div className="callout form"><p>Guarda este enlace privado para consultar tu estado. Quien tenga el enlace podrá ver tu inscripción.</p><label>Enlace privado<input readOnly value={link} onFocus={e=>e.target.select()}/></label><button className="secondary" onClick={()=>action.run(async()=>{await navigator.clipboard.writeText(link);setCopied(true);})}>{copied?'Enlace copiado':'Copiar enlace'}</button></div>
  {data.reviewNote&&<p className="callout">{data.reviewNote}</p>}<PaymentInstructions method={data.paymentInstructionsSnapshot} qrPath={'/guest-registration/qr?token='+encodeURIComponent(token)}/>
  {data.payments.map(p=><p key={p.id}>{p.proofFileId&&<a className="button secondary" target="_blank" rel="noreferrer" href={base+'/guest-registration/payments/'+p.id+'/proof?token='+encodeURIComponent(token)}>Ver comprobante</a>}</p>)}

@@ -1,3 +1,4 @@
+import {modalitiesInput} from '@base/gestion-eventos';
 import { z } from 'zod';
 
 export const idInput = z.string().uuid();
@@ -8,6 +9,7 @@ export const categoryInput = z.object({
   gender: z.enum(['FEMALE', 'MALE']).nullable().default(null),
   minAge: z.number().int().min(0).max(120).nullable().default(null),
   maxAge: z.number().int().min(0).max(120).nullable().default(null),
+  modalities:modalitiesInput.default([]),
   modality: text(100), priceCents: z.number().int().min(0).max(2000000000), currency,
   capacity: z.number().int().min(1).max(1000000).nullable().default(null), active: z.boolean().default(true),
 }).strict().refine(v => v.minAge === null || v.maxAge === null || v.minAge <= v.maxAge, { message: 'La edad mínima no puede superar la máxima', path: ['maxAge'] });

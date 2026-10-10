@@ -85,6 +85,7 @@ export function createEventSetupService({ database: db, files }) {
       if (categoryId) idInput.parse(categoryId);
       return runCoordinated(db, async tx => {
         const event=await editableEvent(tx, actor, eventId);
+        if(event.competitionConfig&&(data.capacity!==null||data.gender!==null||data.minAge!==null||data.maxAge!==null||data.modality!==null))throw conflict('Las distancias utilizan cupo total y divisiones del evento');
         if(!event.teamId && data.currency!=='PEN') throw new AppError('Las categorías personales utilizan soles',400,'INVALID_CURRENCY');
         if (categoryId && !await tx.eventCategory.findFirst({ where: { id: categoryId, eventId } })) throw new AppError('Categoría no disponible', 404, 'CATEGORY_NOT_FOUND');
         if (await tx.eventCategory.findFirst({ where: { eventId, name: { equals: data.name, mode: 'insensitive' }, ...(categoryId ? { id: { not: categoryId } } : {}) } })) throw conflict('Ya existe una categoría con ese nombre en el evento');

@@ -10,7 +10,7 @@ export const participantInput = z.object({
   gender: z.enum(['FEMALE', 'MALE']).nullable().default(null),
   phone: z.string().trim().max(40).default(''),
 }).strict();
-export const enrollmentInput = z.object({ categoryId: z.uuid(), methodId: z.uuid().nullable().default(null),
+export const enrollmentInput = z.object({ categoryId: z.uuid().nullable().default(null), modality:z.string().trim().max(100).nullable().default(null), methodId: z.uuid().nullable().default(null),
   participant: participantInput, proofFileId: z.uuid().nullable().default(null) }).strict();
 export const correctionInput = z.object({ version: z.number().int().positive(), participant: participantInput,
   proofFileId: z.uuid().nullable().default(null) }).strict();
@@ -20,14 +20,22 @@ export const fail = (message, code = 'INVALID_STATE', status = 409) => { throw n
 
 export function validateParticipant(category, participant, eventDate = new Date().toISOString().slice(0,10)) {
   if (category.gender && category.gender !== participant.gender) fail('El género no corresponde a esta categoría', 'CATEGORY_ELIGIBILITY', 400);
-  if ((category.minAge !== null || category.maxAge !== null) && !participant.birthDate) fail('Indica la fecha de nacimiento para esta categoría', 'BIRTH_DATE_REQUIRED', 400);
+  if ((category.requiresBirthDate || category.minAge != null || category.maxAge != null) && !participant.birthDate) fail('Indica la fecha de nacimiento para esta categoría', 'BIRTH_DATE_REQUIRED', 400);
+  let age=null;
   if (participant.birthDate) {
     const birth = new Date(participant.birthDate + 'T00:00:00Z');
     if (Number.isNaN(birth.getTime()) || birth.toISOString().slice(0,10) !== participant.birthDate || participant.birthDate > new Date().toISOString().slice(0,10)) fail('Fecha de nacimiento inválida', 'INVALID_BIRTH_DATE', 400);
     // eventDate is the calendar date in the event's timezone, frozen when registering.
-    const age = Number(eventDate.slice(0,4)) - Number(participant.birthDate.slice(0,4)) - (eventDate.slice(5) < participant.birthDate.slice(5) ? 1 : 0);
-    if (age < 0 || age > 120 || (category.minAge !== null && age < category.minAge) || (category.maxAge !== null && age > category.maxAge)) fail('La edad el día del evento no corresponde a la categoría', 'CATEGORY_ELIGIBILITY', 400);
+    age = Number(eventDate.slice(0,4)) - Number(participant.birthDate.slice(0,4)) - (eventDate.slice(5) < participant.birthDate.slice(5) ? 1 : 0);
+    if (age < 0 || age > 120 || (category.minAge != null && age < category.minAge) || (category.maxAge != null && age > category.maxAge)) fail('La edad el día del evento no corresponde a la categoría', 'CATEGORY_ELIGIBILITY', 400);
   }
+  const rules=category.competitionConfig;
+  if(rules?.genderEnabled&&!participant.gender)fail('Indica el género para esta competencia','GENDER_REQUIRED',400);
+  let ageGroup=null;
+  if(rules?.ageGroupsEnabled&&participant.birthDate){
+   const group=rules.ageGroups.find(g=>age>=g.minAge&&age<=g.maxAge);if(group)ageGroup=group.minAge+'–'+group.maxAge+' años';
+  }
+  return {...category,classification:{modality:category.classification?.modality??category.modality??null,gender:rules?.genderEnabled?participant.gender:null,ageGroup},classificationWarning:rules?.ageGroupsEnabled&&!ageGroup?'Fuera de los rangos de edad configurados':null};
 }
 export async function audit(tx, registration, actorId, toStatus, note = null) {
   await tx.database.registrationAudit.create({ data: { registrationId: registration.id, actorId,
@@ -35,23 +43,23 @@ export async function audit(tx, registration, actorId, toStatus, note = null) {
 }
 export async function prepareRegistration(tx, user, eventId, raw) {
   const db = tx.database;
-  if((await db.event.findUnique({where:{id:eventId}}))?.mode==='INFORMATIONAL') fail('Este evento no recibe inscripciones en Invictus','INFORMATIONAL_EVENT');
-  if (!await db.eventCategory.count({ where: { eventId } })) {
-    if (raw && Object.keys(raw).length) fail('Este evento usa inscripción general', 'INVALID_INPUT', 400);
-    return;
-  }
-  const input = enrollmentInput.parse(raw);
   const event = await db.event.findUnique({ where: { id: eventId }, include: { team: true } });
+  if(event?.mode==='INFORMATIONAL')fail('Este evento no recibe inscripciones en Invictus','INFORMATIONAL_EVENT');
   if (!event || (event.teamId && !event.team?.active) || event.status !== 'PUBLISHED' || event.startsAt <= new Date()) fail('El evento no acepta inscripciones', 'EVENT_NOT_OPEN');
-  const category = await db.eventCategory.findFirst({ where: { id: input.categoryId, eventId, active: true } });
-  if (!category) fail('Categoría no disponible', 'CATEGORY_NOT_FOUND', 400);
+  const hasCategories=await db.eventCategory.count({where:{eventId}});
+  if(!hasCategories&&!event.competitionConfig&&(!raw||!Object.keys(raw).length))return; // Compatibilidad con la API histórica.
+  const input=enrollmentInput.parse(raw);
+  const category=hasCategories?await db.eventCategory.findFirst({where:{id:input.categoryId??'00000000-0000-0000-0000-000000000000',eventId,active:true}}):{id:null,name:'Inscripción general',description:null,gender:null,minAge:null,maxAge:null,modality:null,modalities:[],capacity:null,priceCents:0,currency:'PEN'};
+  if(!category||(!hasCategories&&input.categoryId))fail('Distancia no disponible','CATEGORY_NOT_FOUND',400);
+  const modalities=category.modalities||[];
+  if(modalities.length?!modalities.some(m=>m.name===input.modality):!!input.modality)fail('Selecciona una modalidad disponible para esta distancia','INVALID_MODALITY',400);
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: event.timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(event.startsAt);
   const part = type => parts.find(p => p.type === type).value;
   const eventDate = `${part('year')}-${part('month')}-${part('day')}`;
-  validateParticipant(category, input.participant, eventDate);
   if (category.capacity !== null && await db.eventRegistration.count({ where: { categoryId: category.id, status: { in: reservedStates } } }) >= category.capacity) fail('Cupo de categoría agotado', 'CATEGORY_CAPACITY_REACHED');
   let method = null;
   const configuration=await db.eventRegistrationConfig.findUnique({where:{eventId}});
+  if(!hasCategories&&configuration?.amountCents!==0)fail('La inscripción general requiere su configuración de pago','NOT_CONFIGURED');
   const recipientId=event.teamId?event.team?.paymentRecipientId:configuration?.paymentRecipientId;
   if (category.priceCents) {
     const selected = input.methodId && await db.eventPaymentMethod.findUnique({ where: { eventId_methodId: { eventId, methodId: input.methodId } }, include: { method: true } });
@@ -59,8 +67,8 @@ export async function prepareRegistration(tx, user, eventId, raw) {
     if (!method?.active || (event.teamId?method.teamId!==event.teamId:method.teamId!==null||method.eventId!==event.id) || method.currency !== category.currency) fail('Selecciona un método activo del evento y de la misma moneda', 'INVALID_PAYMENT_METHOD', 400);
     if (!recipientId) fail('Evento sin destinatario de pagos', 'NOT_CONFIGURED');
   } else if (input.methodId || input.proofFileId) fail('La categoría gratuita no requiere pago ni comprobante', 'INVALID_INPUT', 400);
-  const categorySnapshot = { name: category.name, description: category.description, gender: category.gender, minAge: category.minAge, maxAge: category.maxAge,
-    modality: category.modality, eventDate, ageReference: 'EVENT_DATE' };
+  const categorySnapshot = validateParticipant({ requiresBirthDate:true,competitionConfig:event.competitionConfig,classification:{modality:input.modality}, name: category.name, description: category.description, gender: category.gender, minAge: category.minAge, maxAge: category.maxAge,
+    modality: input.modality??category.modality, modalityDescription:modalities.find(m=>m.name===input.modality)?.description??null,eventDate, ageReference: 'EVENT_DATE' },input.participant,eventDate);
   const instructions = method ? { recipientName: event.team?.name || method.holderName, methodId: method.id, type: method.type, label: method.label, phone: method.phone,
     holder: method.holderName, bank: method.bank, accountNumber: method.accountNumber, cci: method.cci, currency: method.currency, instructions: method.instructions, qrFileId: method.qrFileId } : undefined;
   const identity=user.id ? await readProfileIdentity(db,user) : user;

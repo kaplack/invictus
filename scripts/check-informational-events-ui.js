@@ -23,6 +23,10 @@ try {
  await page.goto('http://localhost:5175/#/gestion/eventos/informativos');
  await page.getByRole('button',{name:'Crear evento informativo +',exact:true}).click();
  await page.getByLabel('Organizador real',{exact:true}).fill('Academia del Pacífico');await page.getByLabel('Enlace del organizador',{exact:true}).fill('https://example.test/evento');
+ await page.getByLabel('Teléfono del organizador (opcional)').fill('+51 987 654 321');await page.getByLabel('Correo del organizador (opcional)').fill('contacto@example.test');
+ await page.getByLabel('Hora de concentración').fill('08:30');await page.getByLabel('Mi evento tiene entrega de kits').check();await page.getByLabel('Fecha desde',{exact:true}).fill('2027-10-01');await page.getByLabel('Fecha hasta',{exact:true}).fill('2027-10-01');await page.getByLabel('Hora desde (hora de Lima)').fill('09:00');await page.getByLabel('Hora hasta (hora de Lima)').fill('18:00');await page.getByLabel('Lugar de entrega').fill('Academia');await page.getByLabel('Instrucciones adicionales').fill('Llevar DNI');
+ await page.locator('summary').filter({hasText:'Ruta del evento'}).click();await page.locator('.event-image-picker').filter({hasText:'Imagen de la ruta'}).locator('input[type=file]').setInputFiles('client/public/images/evento.png');
+ await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await mkdir('.local/screenshots',{recursive:true});await page.locator('dialog').evaluate(el=>el.scrollTop=0);await page.screenshot({path:'.local/screenshots/informational-form-mobile.png'});await page.setViewportSize({width:1440,height:1000});await page.locator('dialog').evaluate(el=>el.scrollTop=0);await page.screenshot({path:'.local/screenshots/informational-form-desktop.png'});
  await page.getByLabel('Título',{exact:true}).fill(title);await page.getByLabel('Descripción',{exact:true}).fill('Evento organizado por Academia del Pacífico');
  await page.getByLabel('Fecha y hora de Lima').fill('2027-10-02T09:00');await page.getByLabel('Lugar',{exact:true}).fill('Lima');
  expect(await page.getByLabel('Cupo máximo').count()).toBe(0);
@@ -33,7 +37,8 @@ try {
  await publicPage.goto(origin+'/#/eventos/'+event.publicSlug);await expect(publicPage.getByRole('heading',{name:title,exact:true})).toBeVisible();
  const cta=publicPage.getByRole('link',{name:'Ir al sitio del organizador ↗',exact:true});await expect(cta).toHaveAttribute('href','https://example.test/evento');
  expect(await publicPage.getByText('Inicia sesión para inscribirte',{exact:true}).count()).toBe(0);
- await expect(publicPage.getByText('Organiza: Academia del Pacífico',{exact:true})).toBeVisible();
+ await expect(publicPage.getByRole('link',{name:'+51 987 654 321',exact:true})).toHaveAttribute('href','tel:+51987654321');await expect(publicPage.getByRole('link',{name:'contacto@example.test',exact:true})).toHaveAttribute('href','mailto:contacto@example.test');await expect(publicPage.getByRole('heading',{name:'Entrega de kits'})).toBeVisible();await expect(publicPage.getByRole('img',{name:'Ruta del evento',exact:true})).toBeVisible();
+ await page.locator('tr').filter({hasText:title}).getByRole('button',{name:'Editar evento',exact:true}).click();await expect(page.getByLabel('Teléfono del organizador (opcional)')).toHaveValue('+51 987 654 321');await page.getByLabel('Teléfono del organizador (opcional)').fill('');await page.getByLabel('Correo del organizador (opcional)').fill('');await page.getByRole('button',{name:'Guardar evento',exact:true}).click();await publicPage.reload();expect(await publicPage.getByRole('link',{name:'contacto@example.test',exact:true}).count()).toBe(0);expect(await publicPage.getByText('Teléfono:',{exact:false}).count()).toBe(0);
  expect(await publicPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await publicPage.screenshot({path:'.local/screenshots/informational-public-mobile.png',fullPage:true});
  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
