@@ -1,5 +1,10 @@
 import React from 'react';
 const paths = {
+  clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
+  alert: <><circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 3v1"/></>,
+  check: <path d="m5 12 4 4L19 6"/>,
+  rejected: <><circle cx="12" cy="12" r="9"/><path d="m8 8 8 8m0-8-8 8"/></>,
+  history: <><path d="M3 11a9 9 0 1 1 2.6 7M3 4v7h7M12 7v5l3 2"/></>,
   plus: <path d="M12 4v16M4 12h16"/>,
   trash: <><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></>,
   previous: <><path d="M20 12H4m6-6-6 6 6 6"/></>,

@@ -125,7 +125,8 @@ export function createCategoryRegistrations({ database: db, commerce, registrati
         db.eventRegistrationConfig.findUnique({ where: { eventId } }),
       ]);
       const occupied = groups.filter(g => reservedStates.includes(g.status)).reduce((sum,g) => sum + g._count, 0);
-      return { items:items.map(withUserIdentity), total, nextOffset: input.offset + items.length < total ? input.offset + 20 : null,
+      const proofs = items.length ? await db.manualPayment.findMany({ where: { operationId: { in: items.map(i => i.id) }, proofFileId: { not: null } }, select: { id: true, operationId: true }, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }] }) : [];
+      return { items:items.map(i => ({ ...withUserIdentity(i), proofPaymentId: proofs.find(p => p.operationId === i.id)?.id || null })), total, nextOffset: input.offset + items.length < total ? input.offset + 20 : null,
         summary: { statuses: Object.fromEntries(groups.map(g => [g.status,g._count])), occupied, capacity: configuration?.maxCapacity ?? null },
         categories: categories.map(c => ({ ...c, occupied: categoryCounts.find(g => g.categoryId === c.id)?._count || 0 })) };
     },

@@ -2,7 +2,7 @@ import React,{useEffect,useState} from 'react';
 import {Modal} from './Modal.jsx';
 import '../styles/proof-preview.css';
 
-export function ProofPreview({url,close}) {
+export function ProofPreview({url,close,recipient}) {
  const [preview,setPreview]=useState(null),[error,setError]=useState(''),[revision,setRevision]=useState(0);
  useEffect(()=>{
   const controller=new AbortController();let objectUrl;
@@ -16,6 +16,7 @@ export function ProofPreview({url,close}) {
   return()=>{controller.abort();if(objectUrl)URL.revokeObjectURL(objectUrl);};
  },[url,revision]);
  return <div className="proof-preview"><Modal title="Comprobante de pago" onClose={close}>
+  {recipient&&<p className="proof-recipient">Cuenta receptora: {[recipient.label || recipient.type, recipient.holder, recipient.phone].filter(Boolean).join(' · ')}</p>}
   {!preview&&!error&&<p role="status">Cargando comprobante…</p>}
   {error&&<div role="alert"><p>{error}</p><button className="secondary" onClick={()=>setRevision(v=>v+1)}>Reintentar</button></div>}
   {preview&&<>

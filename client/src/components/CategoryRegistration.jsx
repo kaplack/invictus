@@ -24,7 +24,7 @@ function participantFrom(form) { const f = new FormData(form); return { birthDat
 export function ProofField({ required, setFile }) { return <label>Comprobante privado{required ? ' (obligatorio)' : ' (opcional)'} · imagen o PDF, hasta 10 MB<input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" required={required} onChange={e => setFile(e.target.files[0] || null)}/></label>; }
 export function PaymentInstructions({ method: m, qrPath }) {
   if (!m) return null;
-  return <section className="card"><h4>{m.label} · {paymentTypes[m.type]}</h4>
+  return <section className="card"><h4>{[...new Set([m.label, paymentTypes[m.type]].filter(Boolean))].join(' · ')}</h4>
     {m.holder && <p>Titular: {m.holder}</p>}{m.phone && <p>Celular: {m.phone}</p>}{m.bank && <p>Banco: {m.bank}</p>}
     {m.accountNumber && <p>Cuenta: {m.accountNumber}</p>}{m.cci && <p>CCI: {m.cci}</p>}<p className="preline">{m.instructions}</p>
     {(m.hasQr || m.qrFileId) && <a className="button secondary" href={base + qrPath} target="_blank" rel="noreferrer">Ver QR para pagar</a>}
@@ -60,17 +60,24 @@ export function CategoryEnrollment({ event, close, initialCategoryId = '' }) {
   }}</State></Modal>;
 }
 
-export function RegistrationDetail({ id, manager = false, changed = () => {} }) {
+export function RegistrationDetail({ id, manager = false, changed = () => {}, initialTab = 'registration' }) {
+  const [tab, setTab] = useState(initialTab);
   const r = useData(`/registrations/${id}`), a = useAction(), [file, setFile] = useState(null), [decision, setDecision] = useState('CONFIRMED'), [proof, setProof] = useState(null);
   const refresh = () => { r.reload(); changed(); setFile(null); };
   return <><State resource={r}>{data => <>
+    {manager&&<div className="registration-tabs" role="tablist" aria-label="Detalle de inscripción" onKeyDown={e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?'registration':e.key==='End'?'history':tab==='registration'?'history':'registration';setTab(next);e.currentTarget.querySelector(`[data-tab="${next}"]`).focus();}}}>
+      <button type="button" id={`registration-tab-${id}`} data-tab="registration" role="tab" aria-selected={tab==='registration'} aria-controls={`registration-panel-${id}`} tabIndex={tab==='registration'?0:-1} onClick={()=>setTab('registration')}>Inscripción</button>
+      <button type="button" id={`history-tab-${id}`} data-tab="history" role="tab" aria-selected={tab==='history'} aria-controls={`history-panel-${id}`} tabIndex={tab==='history'?0:-1} onClick={()=>setTab('history')}>Historial ({data.audits.length})</button>
+    </div>}
+    <div hidden={manager&&tab!=='registration'} role={manager?'tabpanel':undefined} id={`registration-panel-${id}`} aria-labelledby={manager?`registration-tab-${id}`:undefined} tabIndex={manager?0:undefined}>
     <h3>{data.event.title} · {classificationLabel(data.categorySnapshot)}</h3><p>Organiza: {data.event.publicOrganizerName || data.event.team?.name || 'Organizador independiente'}</p>
     <RegistrationStatus status={data.status}/><p><strong>{amount(data)}</strong> · {data.paymentInstructionsSnapshot?.label || 'Sin pago'}</p>
+    {manager&&<h4>Participante</h4>}
     <p>{userLabel(data.participantSnapshot)} · {data.participantSnapshot.email}</p>
-    <p>{data.participantSnapshot.birthDate ? `Nacimiento: ${data.participantSnapshot.birthDate} · ` : ''}{data.participantSnapshot.gender === 'FEMALE' ? 'Femenino' : data.participantSnapshot.gender === 'MALE' ? 'Masculino' : ''}{data.participantSnapshot.phone ? ` · ${data.participantSnapshot.phone}` : ''}</p>
+    <p>{[data.participantSnapshot.birthDate && `Nacimiento: ${data.participantSnapshot.birthDate}`, data.participantSnapshot.gender === 'FEMALE' ? 'Femenino' : data.participantSnapshot.gender === 'MALE' ? 'Masculino' : '', data.participantSnapshot.phone && `Teléfono: ${data.participantSnapshot.phone}`].filter(Boolean).join(' · ')}</p>
     {manager&&data.categorySnapshot.classificationWarning&&<p className="callout">{data.categorySnapshot.classificationWarning}. Evalúa la participación antes de confirmar.</p>}
     {data.reviewNote && <p className="callout"><strong>Motivo del organizador:</strong> {data.reviewNote}</p>}
-    <PaymentInstructions method={data.paymentInstructionsSnapshot} qrPath={`/registrations/${id}/qr`}/>
+    {manager ? <><h4>Pago</h4>{data.paymentInstructionsSnapshot&&<details className="registration-recipient"><summary>Datos de la cuenta receptora</summary><PaymentInstructions method={data.paymentInstructionsSnapshot} qrPath={`/registrations/${id}/qr`}/></details>}</> : <PaymentInstructions method={data.paymentInstructionsSnapshot} qrPath={`/registrations/${id}/qr`}/>}
     {data.payments.map(p => <section className="payment-row" key={p.id}><span>{new Date(p.createdAt).toLocaleString('es-PE')} · {({ pending: 'Pendiente', pending_review: 'En revisión', verified: 'Verificado', rejected: 'Rechazado', observed: 'Observado' })[p.status]}</span>{p.rejectionReason && <p>{p.rejectionReason}</p>}{p.proofFileId && <button type="button" className="secondary" onClick={()=>setProof(`${base}/registrations/${id}/payments/${p.id}/proof`)}>Ver comprobante</button>}</section>)}
     {!manager && data.status === 'OBSERVED' && <form key={data.version} className="form" onSubmit={e => {
       e.preventDefault(); const participant = participantFrom(e.currentTarget);
@@ -88,6 +95,8 @@ export function RegistrationDetail({ id, manager = false, changed = () => {} }) 
       <Textarea label="Motivo" name="note" required={decision !== 'CONFIRMED'} maxLength={300} disabled={a.busy}/>
       <p>{decision === 'OBSERVED' ? 'Se conserva el cupo mientras el participante corrige.' : decision === 'REJECTED' ? 'Se libera el cupo. Esta inscripción no podrá reactivarse.' : 'Confirma que revisaste los datos y, si corresponde, el pago recibido.'}</p><button disabled={a.busy}>Guardar revisión</button>
     </form>}
-    <details><summary>Historial de cambios ({data.audits.length})</summary>{data.audits.map(h => <p key={h.id}>{new Date(h.createdAt).toLocaleString('es-PE')} · {h.actor ? userLabel(h.actor) : 'Participante invitado'} · {labels[h.toStatus]}{h.note ? `: ${h.note}` : ''}</p>)}</details>
-  </>}</State><Feedback state={a}/>{proof&&<ProofPreview url={proof} close={()=>setProof(null)}/>}</>;
+    </div>
+    {manager ? <div hidden={tab!=='history'} role="tabpanel" id={`history-panel-${id}`} aria-labelledby={`history-tab-${id}`} tabIndex={0}><h3>Historial de cambios</h3><p>{userLabel(data.participantSnapshot)}</p>{data.audits.length ? <ol className="registration-timeline">{data.audits.map(h=><li key={h.id}><time dateTime={h.createdAt}>{new Date(h.createdAt).toLocaleString('es-PE')}</time><strong>{labels[h.toStatus] || h.toStatus}</strong><span>{h.actor ? userLabel(h.actor) : 'Participante invitado'}</span>{h.note&&<p className="preline">{h.note}</p>}</li>)}</ol> : <p>No hay cambios registrados.</p>}</div> : <details><summary>Historial de cambios ({data.audits.length})</summary>{data.audits.map(h => <p key={h.id}>{new Date(h.createdAt).toLocaleString('es-PE')} · {h.actor ? userLabel(h.actor) : 'Participante invitado'} · {labels[h.toStatus]}{h.note ? `: ${h.note}` : ''}</p>)}</details>}
+    {proof&&<ProofPreview url={proof} recipient={data.paymentInstructionsSnapshot} close={()=>setProof(null)}/>}
+  </>}</State><Feedback state={a}/></>;
 }
