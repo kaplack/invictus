@@ -6,6 +6,7 @@ const httpUrl = z.string().url().refine(v => ['http:', 'https:'].includes(new UR
 const timeZone = z.string().min(1).refine(value => { try { new Intl.DateTimeFormat('en', { timeZone: value }); return true; } catch { return false; } });
 export const eventInput = z.object({ title: z.string().trim().min(1).max(180), description: z.string().trim().min(1).max(10000),
   type: optionalText(100), startsAt: z.string().datetime({ offset: true }), timeZone, venue: optionalText(500), virtualUrl: httpUrl.nullable().optional(),
+  rulesFileId: z.string().uuid().nullable().optional(),
   competitionConfig:competitionConfigInput.optional(),
   timeLimitMinutes:z.number().int().min(1).max(2147483647).nullable().optional(),
   meetingAt: z.string().datetime({offset:true}).nullable().optional(), meetingVenue: optionalText(500),

@@ -1,3 +1,4 @@
+import {EventRulesLink} from './EventRules.jsx';
 import React,{useState,useEffect} from 'react';
 import {api,fileUrl} from '../services/api.js';
 import {useAction} from '../hooks/data.js';
@@ -44,6 +45,7 @@ export function EventDetail({event,user}) {
   <div className="event-detail-actions">{registerButton(true)}<button type="button" className="secondary event-detail-share-button" aria-label="Compartir evento" title="Compartir evento" onClick={()=>setSharing(true)}><OutlineIcon name="share"/></button></div></div>
   <div className="event-detail-layout"><div className="event-detail-main">
    <Feedback state={action}/>
+   {!informational&&event.rulesFileId&&<EventRulesLink fileId={event.rulesFileId}/>}
    {registration&&<p className="event-registration-note" role="status">{registrationLabel}. <a href="/inscripciones">Consultar en Mis inscripciones →</a></p>}
    {registrationError&&<p className="error" role="alert">{registrationError} <button className="secondary" onClick={()=>setRevision(v=>v+1)}>Reintentar</button></p>}
    <section className="event-detail-panel"><h2><OutlineIcon name="info"/>Información del evento</h2><div className="event-detail-facts">

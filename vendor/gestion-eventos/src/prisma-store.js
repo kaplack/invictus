@@ -1,6 +1,6 @@
 import { runCoordinated, assertLiveFiles } from '@base/usuarios-acceso/contracts';
 import { EventError } from './errors.js';
-const references = e => [e.primaryImageFileId,e.bannerImageFileId,e.routeImageFileId,...(e.routeImages||[]).map(r=>r.fileId),...(e.galleryFileIds||[]),...(e.benefits||[]).map(b=>b.imageFileId)];
+const references = e => [e.rulesFileId,e.primaryImageFileId,e.bannerImageFileId,e.routeImageFileId,...(e.routeImages||[]).map(r=>r.fileId),...(e.galleryFileIds||[]),...(e.benefits||[]).map(b=>b.imageFileId)];
 const include = { routeImages: {orderBy: [{position: 'asc'}, {id: 'asc'}]}, benefits: { orderBy: [{ position: 'asc' }, { id: 'asc' }] } };
 const view = row => row && ({ ...row, startsAt: row.startsAt?.toISOString() ?? null, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(),
   routeImages: row.routeImages.map(({id,eventId,position,...route})=>route),
@@ -8,6 +8,7 @@ const view = row => row && ({ ...row, startsAt: row.startsAt?.toISOString() ?? n
 function data(e) {
   return { organizerId: e.organizerId, publicSlug: e.publicSlug, title: e.title, description: e.description,
     kitDateFrom:e.kitDateFrom?new Date(e.kitDateFrom):null,kitDateTo:e.kitDateTo?new Date(e.kitDateTo):null,kitTimeFrom:e.kitTimeFrom??null,kitTimeTo:e.kitTimeTo??null,kitInstructions:e.kitInstructions??null,
+    rulesFileId:e.rulesFileId??null,
     competitionConfig:e.competitionConfig??undefined,
     timeLimitMinutes:e.timeLimitMinutes??null,
     meetingAt:e.meetingAt?new Date(e.meetingAt):null,meetingVenue:e.meetingVenue??null,kitEnabled:e.kitEnabled??false,kitStartsAt:e.kitStartsAt?new Date(e.kitStartsAt):null,kitEndsAt:e.kitEndsAt?new Date(e.kitEndsAt):null,kitVenue:e.kitVenue??null,kitAddress:e.kitAddress??null,routeImageFileId:e.routeImageFileId??null,

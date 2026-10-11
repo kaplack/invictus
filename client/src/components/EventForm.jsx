@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal } from './Modal.jsx';
+import {EventRules} from './EventRules.jsx';
 import { Field, Textarea, Feedback } from './UI.jsx';
 import { ImagePicker } from './ImagePicker.jsx';
 import {RouteImagesEditor} from './RouteImagesEditor.jsx';
@@ -12,6 +13,9 @@ import { api, upload } from '../services/api.js';
 export function EventForm({ event, close, saved, endpoint = '/events/manage' }) {
   const action = useAction(), [image, setImage] = useState(null), [routes,setRoutes]=useState(()=>routeImageDrafts(event)), [kitEnabled,setKitEnabled]=useState(event.kitEnabled||false);
   const disciplines = useData('/disciplines');
+  const [rulesPdf,setRulesPdf]=useState(null);
+  const [rulesLocked,setRulesLocked]=useState(!!event.id);
+  useEffect(()=>{if(!event.id||event.mode==='INFORMATIONAL')return;let active=true;api('/events/'+event.id+'/setup').then(data=>{if(active)setRulesLocked(data.hasRegistrations);}).catch(()=>{});return()=>{active=false;};},[event.id]);
   const informational=event.mode==='INFORMATIONAL';
   const teamsUrl = endpoint === '/events/mine' ? '#/mis-teams' : `${import.meta.env.VITE_PUBLIC_URL || 'http://localhost:5173'}/#/mis-teams`;
   return <Modal title={event.id ? 'Editar evento' : 'Nuevo evento'} onClose={close} busy={action.busy} className={informational?'informational-event-modal':''}>
@@ -24,6 +28,7 @@ export function EventForm({ event, close, saved, endpoint = '/events/manage' }) 
       if ('disciplineId' in values) values.disciplineId = values.disciplineId || null;
       action.run(async () => {
         if (!informational && endpoint !== '/events/mine' && !event.id && !values.teamId) throw new Error('Selecciona un Team para crear el evento.');
+        if(rulesPdf)values.rulesFileId=(await upload(rulesPdf,'public')).id;
         if (image) values.primaryImageFileId = (await upload(image, 'public')).id;
         if(informational)values.routeImages=await saveRouteImages(routes,(key,fileId)=>setRoutes(rows=>rows.map(r=>r.key===key?{...r,fileId,file:null}:r)));
         await api(endpoint + (event.id ? '/' + event.id : ''), event.id ? 'PATCH' : 'POST', values); saved();
@@ -42,6 +47,7 @@ export function EventForm({ event, close, saved, endpoint = '/events/manage' }) 
       </div>
       {!informational && <small>El cupo queda fijo tras la primera inscripción.</small>}
       {informational?<><ImagePicker label="Imagen del evento" fileId={event.primaryImageFileId} file={image} onChange={setImage}/><label className="check"><input type="checkbox" checked={kitEnabled} onChange={e=>setKitEnabled(e.target.checked)}/>Mi evento tiene entrega de kits</label>{kitEnabled&&<><h3>Entrega de kits</h3><div className="form-grid"><Field label="Fecha desde" name="kitDateFrom" type="date" defaultValue={event.kitDateFrom?.slice(0,10)||''} required/><Field label="Fecha hasta" name="kitDateTo" type="date" defaultValue={event.kitDateTo?.slice(0,10)||''} required/><Field label="Hora desde (hora de Lima)" name="kitTimeFrom" type="time" defaultValue={event.kitTimeFrom||''} required/><Field label="Hora hasta (hora de Lima)" name="kitTimeTo" type="time" defaultValue={event.kitTimeTo||''} required/></div><p>Horario de atención diario durante las fechas indicadas.</p><Field label="Lugar de entrega" name="kitVenue" defaultValue={event.kitVenue||''} maxLength={500} required/><Textarea label="Instrucciones adicionales" name="kitInstructions" defaultValue={event.kitInstructions||''} maxLength={2000}/></>}<details><summary>Rutas del evento</summary><RouteImagesEditor routes={routes} onChange={setRoutes} disabled={action.busy}/></details></>:<label>Imagen pública (opcional, PNG/JPG/WebP, hasta 10 MB)<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => setImage(e.target.files[0])}/></label>}
+      {!informational&&<EventRules fileId={event.rulesFileId} file={rulesPdf} locked={rulesLocked} onChange={setRulesPdf}/>}
       <div className="actions"><button disabled={action.busy}>Guardar evento</button><button className="secondary" type="button" disabled={action.busy} onClick={close}>Cancelar</button></div>
       <Feedback state={action}/>
     </form>

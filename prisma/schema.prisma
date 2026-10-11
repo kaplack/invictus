@@ -44,6 +44,7 @@ model StoredFile {
   teamLogos Team[] @relation("TeamLogo")
   teamBanners Team[] @relation("TeamBanner")
   shopImageRows ShopProduct[] @relation("ShopImage")
+  eventRulesRows Event[] @relation("EventRules")
   eventPrimaryRows Event[] @relation("EventPrimary")
   eventBannerRows Event[] @relation("EventBanner")
   benefitImageRows EventBenefit[] @relation("BenefitImage")
@@ -334,6 +335,8 @@ model Event {
   source String @default("INVICTUS")
   reviewStatus String @default("DRAFT") @map("review_status")
   reviewNote String? @map("review_note")
+  rulesFileId String? @map("rules_file_id") @db.Uuid
+  rulesFile StoredFile? @relation("EventRules", fields: [rulesFileId], references: [id], onDelete: Restrict)
   primaryImageFileId String? @map("primary_image_file_id") @db.Uuid
   primaryImage StoredFile? @relation("EventPrimary", fields: [primaryImageFileId], references: [id], onDelete: Restrict)
   bannerImageFileId String? @map("banner_image_file_id") @db.Uuid
@@ -343,6 +346,7 @@ model Event {
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   benefits EventBenefit[]
   @@index([organizerId, status], map: "events_organizer_status_idx")
+  @@index([rulesFileId], map: "events_rules_file_id_idx")
   @@index([teamId, status], map: "events_team_status_idx")
   @@unique([id, teamId])
   @@map("events")
