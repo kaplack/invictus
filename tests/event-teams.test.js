@@ -21,6 +21,21 @@ async function account(role = 'USER') {
   return { agent, user: body.user };
 }
 
+test('solo administración pasa externos aprobados a borrador conservando inscritos', async () => {
+  const owner=await account(), participant=await account(), admin=await account('ADMIN');
+  const event=await db.event.create({data:{id:randomUUID(),organizerId:owner.user.id,publicSlug:'unpublish-'+randomUUID(),title:'Evento externo aprobado',description:'Prueba de despublicación',startsAt:new Date(Date.now()+172800000),timeZone:'America/Lima',source:'EXTERNAL',status:'PUBLISHED',reviewStatus:'APPROVED'}});
+  await db.eventRegistrationConfig.create({data:{eventId:event.id,amountCents:0,currency:'PEN',maxCapacity:5}});
+  await send(participant.agent,'post',`/events/${event.id}/register`).expect(201);
+  const registrations=await db.eventRegistration.findMany({where:{eventId:event.id}});
+  await send(owner.agent,'post',`/events/manage/${event.id}/unpublish`).expect(403);
+  const result=(await send(admin.agent,'post',`/events/manage/${event.id}/unpublish`).expect(200)).body;
+  assert.equal(result.status,'DRAFT');assert.equal(result.reviewStatus,'APPROVED');
+  assert.deepEqual(await db.eventRegistration.findMany({where:{eventId:event.id}}),registrations);
+  await request(app).get(`/api/events/public/${event.publicSlug}`).expect(404);
+  assert.ok(!(await request(app).get('/api/events').expect(200)).body.some(row=>row.id===event.id));
+  await send(owner.agent,'post',`/events/${event.id}/register`).expect(409);
+});
+
 test('eventos por Team: gestión compartida, revocación, revisión, inscripción y migración compatible', async () => {
   const owner = await account(), coadmin = await account(), member = await account(), outsider = await account(), moderator = await account('ADMIN');
   const team = (await send(owner.agent, 'post', '/teams', { name: 'Team organizador' }).expect(201)).body;

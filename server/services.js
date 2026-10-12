@@ -113,8 +113,12 @@ export function composeServices({database:db,Prisma,files,config}) {
    return eventsFor(tx.database).publish(actor,id);
   });},
   async unpublish(actor,id){administrator(actor);return commerce.run(null,async tx=>{
-   const event=await lockManagedEvent(tx.database,actor,id);
-   if(event.mode!=='INFORMATIONAL')throw new AppError('Acción disponible para eventos informativos',409,'INVALID_STATE');
+   z.string().uuid().parse(id);
+   await tx.database.$queryRaw`SELECT id FROM events WHERE id = ${id}::uuid FOR UPDATE`;
+   const event=await tx.database.event.findUnique({where:{id}});
+   if(!event)throw new AppError('Evento no encontrado',404,'NOT_FOUND');
+   if(event.source!=='EXTERNAL')await requireEventManager(tx.database,actor,event);
+   if(event.mode!=='INFORMATIONAL' && !(event.source==='EXTERNAL' && event.reviewStatus==='APPROVED'))throw new AppError('Acción disponible para eventos informativos o externos aprobados',409,'INVALID_STATE');
    if(!['DRAFT','PUBLISHED'].includes(event.status))throw new AppError('Evento cerrado',409,'IMMUTABLE_STATE');
    return tx.database.event.update({where:{id},data:{status:'DRAFT'}});
   });},

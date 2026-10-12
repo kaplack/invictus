@@ -2,13 +2,14 @@ import {eventOrganizerName} from '../helpers/event-organizer.js';
 import {visibleCapabilities} from '../app/capabilities.js';
 import { userLabel } from '../helpers/user.js';
 import {Modal,ActionIcon} from '../components/Modal.jsx';
+import {OutlineIcon} from '../components/OutlineIcon.jsx';
 import {EventForm} from '../components/EventForm.jsx';
 import {EventSetup} from '../components/EventSetup.jsx';
 import EventRegistrations from '../components/EventRegistrations.jsx';
 export {EventForm} from '../components/EventForm.jsx';
 import React,{useState}from'react';import{api,upload,fileUrl}from'../services/api.js';import{useData,useAction}from'../hooks/data.js';import{State,Feedback,Field,Textarea,Records,Status,date,money}from'../components/UI.jsx';
 export function ManageEvents({user,resource:r,scope="INVICTUS"}) {
- const [setup,setSetup]=useState(null);
+ const [setup,setSetup]=useState(null),[unpublishing,setUnpublishing]=useState(null);
  const [filter,setFilter]=useState('PENDING_REVIEW');
  const a=useAction(),[editing,setEditing]=useState(null),[attendees,setAttendees]=useState(null),[reviewing,setReviewing]=useState(null),[note,setNote]=useState('');
  const admin=user?.role==='ADMIN';
@@ -20,6 +21,7 @@ export function ManageEvents({user,resource:r,scope="INVICTUS"}) {
  {admin&&!external&&(informational||visibleCapabilities.teams)&&<button onClick={()=>{setEditing(informational?{mode:'INFORMATIONAL'}:{});setReviewing(null);setAttendees(null)}}>{informational?'Crear evento informativo +':'Crear evento Invictus +'}</button>}
  {admin&&!external&&!informational&&!visibleCapabilities.teams&&<a className="button" href={(import.meta.env.VITE_PUBLIC_URL || 'http://localhost:5173')+'/#/mis-eventos'}>Crear evento personal ↗</a>}
  <Feedback state={a}/>
+ {unpublishing&&<Modal title="Pasar evento a borrador" busy={a.busy} onClose={()=>setUnpublishing(null)}><p>«{unpublishing.title}» dejará de aparecer en la web pública y no recibirá nuevas inscripciones. Los inscritos y sus pagos se conservarán.</p><Feedback state={a}/><div className="actions"><button disabled={a.busy} onClick={()=>a.run(async()=>{await api('/events/manage/'+unpublishing.id+'/unpublish','POST',{});setUnpublishing(null);r.reload();},'Evento en borrador. Se conservaron las inscripciones.')}>Pasar a borrador</button><button className="secondary" disabled={a.busy} onClick={()=>setUnpublishing(null)}>Cancelar</button></div></Modal>}
  {setup&&<EventSetup event={setup} close={()=>setSetup(null)}/>}
  {editing&&<EventForm key={editing.id||'new'} event={editing} close={()=>setEditing(null)} saved={()=>{setEditing(null);r.reload()}}/>}
  {reviewing&&<section className="card detail"><h2>Revisar: {reviewing.title}</h2><p className="preline">{reviewing.description}</p><p>{date(reviewing.startsAt)} · {reviewing.venue} · Cupo: {reviewing.configuration?.maxCapacity}</p>
@@ -28,9 +30,10 @@ export function ManageEvents({user,resource:r,scope="INVICTUS"}) {
  <div className="actions"><button disabled={a.busy} onClick={()=>a.run(async()=>{await api(`/events/manage/${reviewing.id}/review`,'POST',{decision:'APPROVE'});setReviewing(null);r.reload();},'Evento aprobado y publicado.')}>Aprobar y publicar</button>
  <button className="secondary" disabled={a.busy||!note.trim()} onClick={()=>a.run(async()=>{await api(`/events/manage/${reviewing.id}/review`,'POST',{decision:'REQUEST_CHANGES',note});setReviewing(null);r.reload();},'Observaciones enviadas al organizador.')}>Solicitar cambios</button>
  <button className="secondary" disabled={a.busy} onClick={()=>setReviewing(null)}>Cerrar</button></div></section>}
- <State resource={r}>{items=>{const visible=items.filter(i=>informational?i.mode==='INFORMATIONAL':i.mode==='INFORMATIONAL'?false:external?i.source==='EXTERNAL'&&i.reviewStatus!=='DRAFT'&&(filter==='ALL'||i.reviewStatus===filter):i.source!=='EXTERNAL');return visible.length?<Records items={visible} columns={[{label:'Evento',render:i=>i.title},{label:'Organizador',render:i=>eventOrganizerName(i)},{label:'Fecha',render:i=>date(i.startsAt)},{label:'Estado',render:i=><Status value={i.source==='EXTERNAL'&&i.status==='DRAFT'?i.reviewStatus:i.status}/>}]} actions={i=><>
+ <State resource={r}>{items=>{const visible=items.filter(i=>informational?i.mode==='INFORMATIONAL':i.mode==='INFORMATIONAL'?false:external?i.source==='EXTERNAL'&&i.reviewStatus!=='DRAFT'&&(filter==='ALL'||i.reviewStatus===filter):i.source!=='EXTERNAL');return visible.length?<Records items={visible} columns={[{label:'Evento',render:i=>i.title},{label:'Organizador',render:i=>eventOrganizerName(i)},{label:'Fecha',render:i=>date(i.startsAt)},{label:'Estado',render:i=><Status value={i.source==='EXTERNAL'&&i.status==='DRAFT'&&i.reviewStatus!=='APPROVED'?i.reviewStatus:i.status}/>}]} actions={i=><>
  {admin&&i.canManage&&i.source!=='EXTERNAL'&&<><button className="secondary icon-action" aria-label="Editar evento" title="Editar evento" disabled={a.busy} onClick={()=>a.run(async()=>{setReviewing(null);setEditing(await api('/events/manage/'+i.id));},'')}><ActionIcon name="edit"/></button>{i.status==='DRAFT'&&<button disabled={a.busy} onClick={()=>a.run(async()=>{await api(`/events/manage/${i.id}/publish`,'POST',{});r.reload()},'Evento publicado.')}>Publicar</button>}</>}
  {admin&&i.mode==='INFORMATIONAL'&&i.status==='PUBLISHED'&&<button disabled={a.busy} onClick={()=>a.run(async()=>{await api('/events/manage/'+i.id+'/unpublish','POST',{});r.reload();},'Evento despublicado.')}>Despublicar</button>}
+ {admin&&i.source==='EXTERNAL'&&i.reviewStatus==='APPROVED'&&i.status==='PUBLISHED'&&<button className="secondary icon-action" aria-label="Pasar a borrador" title="Pasar a borrador" disabled={a.busy} onClick={()=>setUnpublishing(i)}><OutlineIcon name="unpublish"/></button>}
  {admin&&i.source==='EXTERNAL'&&i.reviewStatus==='PENDING_REVIEW'&&<button disabled={a.busy} onClick={()=>a.run(async()=>{setEditing(null);setNote('');setReviewing(await api('/events/manage/'+i.id));},'')}>Revisar evento</button>}
  {i.teamId&&<button className="secondary" onClick={()=>setSetup(i)}>Categorías y pagos</button>}
  {i.mode!=='INFORMATIONAL'&&i.canManage&&<button className="secondary icon-action" aria-label="Ver inscritos" title="Ver inscritos" onClick={()=>setAttendees(i)}><ActionIcon name="people"/></button>}</>}/>:<p className="empty">{external?(filter==='PENDING_REVIEW'?'No hay eventos pendientes de revisión.':'No hay eventos en este filtro.'):informational?'Todavía no hay eventos informativos. Crea el primero para comenzar.':'Todavía no hay eventos de Invictus. Crea el primero para comenzar.'}</p>;}}</State>{attendees&&<Attendees key={attendees.id} event={attendees} close={()=>setAttendees(null)}/>}</>;
