@@ -30,11 +30,13 @@
 .event-participants button.secondary,.event-participants .button.secondary{background:var(--landing-bg);color:var(--landing-text);border-color:var(--landing-line)}
 .event-participants button.secondary:hover,.event-participants .button.secondary:hover,.event-participants button.secondary:focus-visible,.event-participants .button.secondary:focus-visible{background:var(--landing-bg);border-color:var(--landing-gold-hover);color:var(--landing-gold-hover)}
 .event-participants button:disabled{cursor:default;opacity:.5}
-.event-participants .records th:first-child{width:26%}
-.event-participants .records th:nth-child(2){width:16%}
-.event-participants .records th:nth-child(3){width:18%}
-.event-participants .records th:nth-child(4){width:23%}
-.event-participants .records th:nth-child(5){width:17%}
+.event-participants .records th:first-child{width:8%}
+.event-participants .records th:nth-child(2){width:12%}
+.event-participants .records th:nth-child(3){width:20%}
+.event-participants .records th:nth-child(4){width:15%}
+.event-participants .records th:nth-child(5){width:13%}
+.event-participants .records th:nth-child(6){width:14%}
+.event-participants .records th:nth-child(7){width:18%}
 .event-participants .records p{color:var(--landing-muted);line-height:1.6}
 .event-participants .muted,.event-participants small{color:var(--landing-muted)}
 .event-participants details{border:1px solid var(--landing-line);border-radius:8px;padding:14px}

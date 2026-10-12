@@ -35,6 +35,16 @@ try {
  for(const width of [1440,390]){
   await page.setViewportSize({width,height:900});
   const list=page.locator(width===1440?'table.records':'.mobile-records');
+  if(width===1440){
+   await expect(list.locator('thead th')).toHaveCount(7);
+   const geometry=await list.evaluate(table=>{const row=table.querySelector('tbody tr'),cell=row.lastElementChild;return {rowHeight:row.getBoundingClientRect().height,actionsWidth:cell.getBoundingClientRect().width,tableRight:table.getBoundingClientRect().right,actionsRight:cell.getBoundingClientRect().right};});
+   assert.ok(geometry.rowHeight<180,`Unexpected row height: ${geometry.rowHeight}`);
+   assert.ok(geometry.actionsWidth>=150,`Actions column too narrow: ${geometry.actionsWidth}`);
+   assert.ok(geometry.actionsRight<=geometry.tableRight+1);
+   await expect(list.getByRole('button',{name:'Ver inscripción',exact:true})).toBeVisible();
+   await expect(list.getByRole('button',{name:'Ver comprobante',exact:true})).toBeVisible();
+   await expect(list.getByRole('button',{name:'Ver historial',exact:true})).toBeVisible();
+  }
   if(width===390){
    await expect(list.getByRole('link',{name:'Escribir por WhatsApp al 987654321'})).toHaveAttribute('href','https://wa.me/51987654321');
    await expect(list.getByText('Importe y método',{exact:true})).toBeHidden();

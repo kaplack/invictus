@@ -1,4 +1,22 @@
 .registrations-page{max-width:1440px;min-height:calc(100dvh - 210px);margin:0 auto;padding:56px 4vw 70px;color:var(--landing-text)}
+.participant-registrations .records-compact-content{display:none}
+.participant-registrations .records-default-content{display:grid;gap:18px}
+@media(max-width:600px){
+ .participant-registrations .records-default-content{display:none}
+ .participant-registrations .records-compact-content{display:block;min-width:0}
+ .registrations-page.participant-registrations .mobile-records .card{padding:16px;gap:12px}
+ .participant-registration-card{display:grid;gap:10px;min-width:0}
+ .participant-registration-card .registration-event{gap:12px;align-items:flex-start}
+ .participant-registration-card .registration-event img,.participant-registration-card .registration-image-placeholder{width:64px;height:64px}
+ .participant-registration-card .registration-event strong{font-size:16px;line-height:1.4;overflow-wrap:anywhere}
+ .participant-registration-card .registration-event p{margin-top:4px}
+ .participant-registration-card .registration-date{gap:8px;font-size:14px;align-items:center}
+ .participant-registration-card p{margin:0;line-height:1.5;overflow-wrap:anywhere}
+ .participant-registration-category{font-size:14px}
+ .participant-registration-organizer{font-size:13px;color:var(--landing-muted)}
+ .participant-registration-status{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+ .participant-registrations .mobile-records .card>.actions{margin:0;gap:8px 16px}
+}
 .registrations-heading{margin:0 0 44px;padding:0 16px}.registrations-heading>p{font-size:12px;letter-spacing:2px;color:#64d2ef;margin:0 0 16px}.registrations-heading h1{font-size:clamp(36px,4.4vw,58px);letter-spacing:-1.8px;line-height:1.15;margin:0 0 16px}.registrations-heading>span{font-size:18px;line-height:1.7;color:var(--landing-muted)}
 .registrations-panel{border:1px solid var(--landing-line);background:linear-gradient(130deg,var(--landing-surface),var(--landing-bg) 65%);border-radius:14px;padding:28px 24px}.registrations-panel>h2{text-transform:uppercase;font-size:20px;margin:0 0 6px}.registrations-count{color:var(--landing-muted);margin:0 0 24px;font-size:14px}
 .registrations-page .records{width:100%;table-layout:fixed;margin:24px 0 22px;border:1px solid var(--landing-line);border-collapse:separate;border-spacing:0;border-radius:12px;overflow:hidden;font-size:13px}

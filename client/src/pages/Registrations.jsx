@@ -21,13 +21,13 @@ function EventIdentity({ event }) {
 export function Registrations() {
   const resource = useData('/profile/registrations');
   const [selected, setSelected] = useState(null);
-  return <section className="registrations-page">
+  return <section className="registrations-page participant-registrations">
     <header className="registrations-heading"><p>CUENTA</p><h1>Inscripciones</h1><span>Consulta los eventos en los que participas y el estado de tus inscripciones.</span></header>
     <section className="registrations-panel" aria-labelledby="registrations-title">
       <h2 id="registrations-title">Tus inscripciones</h2>
       <State resource={resource}>{items => <>
         <p className="registrations-count">{items.length} {items.length === 1 ? 'evento registrado' : 'eventos registrados'}{items.length === 100 ? ' (últimos 100)' : ''}</p>
-        {items.length ? <Records items={items} columns={[
+        {items.length ? <Records items={items} mobileContent={item=><ParticipantRegistrationCard item={item}/>} columns={[
           {label:'Evento',render:item=><EventIdentity event={item.event}/>},
           {label:'Organizador',render:item=>eventOrganizerName(item.event)},
           {label:'Categoría y pago',render:item=><div className="registration-payment">{classificationLabel(item.categorySnapshot)}<p>{categoryPrice({priceCents:item.amountCents || 0,currency:item.currency || 'PEN'})} · {item.paymentInstructionsSnapshot?.label || 'Sin pago'}</p></div>},
@@ -42,4 +42,18 @@ export function Registrations() {
     </section>
     {selected && <Modal title="Inscripción" onClose={()=>setSelected(null)}><RegistrationDetail key={selected} id={selected} changed={resource.reload}/></Modal>}
   </section>;
+}
+
+function ParticipantRegistrationCard({item}) {
+ const price=categoryPrice({priceCents:item.amountCents||0,currency:item.currency||'PEN'});
+ const payment=item.amountCents>0&&item.paymentInstructionsSnapshot?.label;
+ const shortDate=item.event.startsAt?new Intl.DateTimeFormat('es-PE',{day:'numeric',month:'short',year:'numeric',timeZone:'America/Lima'}).format(new Date(item.event.startsAt)):'Fecha por definir';
+ return <div className="participant-registration-card">
+  <EventIdentity event={item.event}/>
+  <div className="registration-date"><OutlineIcon name="calendar"/><span>{shortDate}</span></div>
+  <p className="participant-registration-category">{classificationLabel(item.categorySnapshot)} · {price}{payment?` · ${payment}`:''}</p>
+  <p className="participant-registration-organizer">Organiza {eventOrganizerName(item.event)}</p>
+  <div className="participant-registration-status"><Status value={item.status} label={states[item.status]}/><CompetitorNumber number={item.competitorNumber} compact label="Competidor"/></div>
+  {item.reviewNote&&<p className="registration-review">{item.reviewNote}</p>}
+ </div>;
 }

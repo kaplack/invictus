@@ -41,8 +41,6 @@
 @media(max-width:600px){.registration-capacity-heading{gap:6px;margin-bottom:4px}.registration-capacity-heading strong,.registration-capacity-heading>span{font-size:13px}.registration-capacity-desktop{display:none}.registration-capacity-mobile{display:inline}.registration-capacity-info{margin-left:auto}.registration-capacity-info svg{width:18px;height:18px}.registration-capacity-row{gap:12px}.registration-summary .registration-category-button{width:44px;min-width:44px;height:44px;padding:0;justify-content:center}.registration-category-button>span{display:none}.registration-state-chips{gap:8px;margin-top:16px}.registration-summary .registration-state-chip{min-height:44px}}
 @media(max-width:600px){.registration-state-chip .registration-state-label{display:none}.registration-state-chip .registration-state-icon{display:block;flex-shrink:0}.registration-summary .registration-state-chip{padding:8px 10px;gap:6px;flex:1}.registration-active-state{display:block;color:var(--landing-muted,var(--black));font-size:13px;margin:12px 0 0}}
 .event-participants .records{overflow:visible}
-.event-participants .records th:nth-child(4){width:19%}
-.event-participants .records th:nth-child(5){width:21%}
 .registration-row-actions button{position:relative}
 .registration-row-actions button::after{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 7px);right:0;padding:7px 10px;border:1px solid var(--landing-line,var(--line));border-radius:6px;background:var(--landing-surface,var(--paper));color:var(--landing-text,var(--black));font-size:12px;white-space:nowrap;pointer-events:none;opacity:0;z-index:3}
 .registration-row-actions button:hover::after,.registration-row-actions button:focus-visible::after{opacity:1}
