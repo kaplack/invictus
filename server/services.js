@@ -1,3 +1,4 @@
+import {withEventOrganizer,teamLabel} from './profile/event-organizer.js';
 import {isDeepStrictEqual} from 'node:util';
 import {assertRulesChangeAllowed} from './event-setup/rules.js';
 import {profileNamesSelect,identityView} from './profile/identity.js';
@@ -33,6 +34,7 @@ export function composeServices({database:db,Prisma,files,config}) {
    if(!ownership?.createdByUserId)throw new AppError('Creador requerido',400,'CREATOR_REQUIRED');
    const saved=await create(event);
    const metadata={teamId:ownership.teamId || null,createdByUserId:ownership.createdByUserId,source:ownership.source};
+   if(!metadata.teamId){const profile=await database.participantProfile.findUnique({where:{userId:ownership.createdByUserId}});const user=await database.user.findUnique({where:{id:ownership.createdByUserId},select:{name:true,lastName:true,username:true}});metadata.publicOrganizerName=profile?.teamName?teamLabel(profile.teamName):[profile?profile.name:user.name,profile?profile.lastName:user.lastName].filter(Boolean).join(' ').slice(0,160)||'@'+user.username;}
    await database.event.update({where:{id:saved.id},data:metadata});
    return {...saved,...metadata};
   };
@@ -50,13 +52,13 @@ export function composeServices({database:db,Prisma,files,config}) {
  const withParticipantCount=({ _count,...event })=>({...event,_count:{categories:_count.categories},participantCount:_count.registrationEventRows});
  const events={
   async publicList(upcoming=false){const rows=await db.event.findMany({where:{status:'PUBLISHED',...(upcoming?{startsAt:{gt:new Date()}}:{})},select:{id:true,title:true,description:true,publicSlug:true,startsAt:true,timeZone:true,venue:true,primaryImageFileId:true,mode:true,publicOrganizerName:true,externalUrl:true,discipline:{select:{name:true}},categories:{where:{active:true},select:{priceCents:true,currency:true}},registrationConfigEventRows:{select:{amountCents:true,currency:true}},team:{select:teamSummary},_count:{select:{categories:true,...publicCount}}},orderBy:{startsAt:'asc'},take:100});return rows.map(withParticipantCount);},
-  async detail(slug){const e=await eventsFor(db).getPublic(slug);const setup=await db.event.findUnique({where:{id:e.id},select:{discipline:{select:{name:true}},categories:{where:{active:true},orderBy:{createdAt:'asc'},select:{id:true,name:true,description:true,gender:true,minAge:true,maxAge:true,modality:true,modalities:true,priceCents:true,currency:true,capacity:true}},_count:{select:{categories:true,...publicCount}},registrationConfigEventRows:{select:{amountCents:true,currency:true}}}});return {...e,...withParticipantCount(setup),team:e.teamId?await db.team.findUnique({where:{id:e.teamId},select:teamSummary}):null};},
+  async detail(slug){const e=await eventsFor(db).getPublic(slug);const setup=await db.event.findUnique({where:{id:e.id},select:{discipline:{select:{name:true}},categories:{where:{active:true},orderBy:{createdAt:'asc'},select:{id:true,name:true,description:true,gender:true,minAge:true,maxAge:true,modality:true,modalities:true,priceCents:true,currency:true,capacity:true}},_count:{select:{categories:true,...publicCount}},registrationConfigEventRows:{select:{amountCents:true,currency:true}}}});return withEventOrganizer(db,{...e,...withParticipantCount(setup),team:e.teamId?await db.team.findUnique({where:{id:e.teamId},select:teamSummary}):null});},
   async list(actor){
    organizer(actor);
    const memberships=await db.teamMember.findMany({where:{userId:actor.id,role:{in:['OWNER','ADMIN']},team:{active:true}},select:{teamId:true}});
    const ids=memberships.map(m=>m.teamId);
    const rows=await db.event.findMany({where:isAdmin(actor)?{}:{OR:[{teamId:null,organizerId:actor.id},{teamId:{in:ids}}]},include:{team:{select:teamSummary}},orderBy:{createdAt:'desc'}});
-   return rows.map(e=>({...e,canManage:e.teamId?ids.includes(e.teamId):isAdmin(actor)||e.organizerId===actor.id}));
+   return Promise.all(rows.map(async e=>({...await withEventOrganizer(db,e),canManage:e.teamId?ids.includes(e.teamId):isAdmin(actor)||e.organizerId===actor.id})));
   },
   async save(actor,id,input){
    administrator(actor);const {maxCapacity,teamId,disciplineId,mode,publicOrganizerName,externalUrl,publicOrganizerPhone,publicOrganizerEmail,...data}=input;
@@ -124,7 +126,7 @@ export function composeServices({database:db,Prisma,files,config}) {
    return coordinated.service.getOwn(actor,r.id);
   });},
   async attendees(actor,id){const rows=await registrations.service.listManaged(actor,id);const users=await db.user.findMany({where:{id:{in:rows.map(r=>r.userId).filter(Boolean)}},select:{id:true,username:true,name:true,lastName:true,email:true,...profileNamesSelect}});return rows.map(r=>({id:r.id,status:r.status,createdAt:r.createdAt,participant:r.participantSnapshot || identityView(users.find(u=>u.id===r.userId))}));},
-  history:actor=>db.eventRegistration.findMany({where:{userId:actor.id},select:{id:true,status:true,createdAt:true,categoryId:true,categorySnapshot:true,amountCents:true,currency:true,reviewNote:true,paymentInstructionsSnapshot:true,event:{select:{title:true,startsAt:true,publicSlug:true,status:true,venue:true,primaryImageFileId:true,team:{select:teamSummary}}}},orderBy:{createdAt:'desc'},take:100})
+  history:async actor=>{const rows=await db.eventRegistration.findMany({where:{userId:actor.id},select:{id:true,status:true,createdAt:true,categoryId:true,categorySnapshot:true,amountCents:true,currency:true,reviewNote:true,paymentInstructionsSnapshot:true,event:{select:{title:true,startsAt:true,publicSlug:true,status:true,venue:true,primaryImageFileId:true,organizerId:true,publicOrganizerName:true,team:{select:teamSummary}}}},orderBy:{createdAt:'desc'},take:100});return Promise.all(rows.map(async row=>({...row,event:await withEventOrganizer(db,row.event)})));}
  };
  const users={async list(actor){administrator(actor);return (await db.user.findMany({select:{id:true,username:true,name:true,lastName:true,email:true,role:true,...profileNamesSelect},take:100,orderBy:{createdAt:'desc'}})).map(identityView);},async role(actor,id,role){administrator(actor);if(!['USER','ORGANIZER','ADMIN'].includes(role)||id===actor.id)throw new AppError('Cambio de rol no permitido',400,'INVALID_ROLE');return db.user.update({where:{id},data:{role},select:{id:true,role:true}});}};
  return {personalEvents:createPersonalEvents({db,commerce,eventsFor,registrationsFor}),events,categoryRegistrations,guestRegistrations,profiles,shop,checkout,payments,users,recipients:createRecipientService({store:commerce,fileService:files,resolvePermissions})};

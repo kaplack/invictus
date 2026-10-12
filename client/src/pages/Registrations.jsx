@@ -1,3 +1,4 @@
+import {eventOrganizerName} from '../helpers/event-organizer.js';
 import {classificationLabel} from '../helpers/registration-classification.js';
 import React, { useState } from 'react';
 import { useData } from '../hooks/data.js';
@@ -27,7 +28,7 @@ export function Registrations() {
         <p className="registrations-count">{items.length} {items.length === 1 ? 'evento registrado' : 'eventos registrados'}{items.length === 100 ? ' (últimos 100)' : ''}</p>
         {items.length ? <Records items={items} columns={[
           {label:'Evento',render:item=><EventIdentity event={item.event}/>},
-          {label:'Organizador',render:item=>item.event.team?.name || 'Organizador independiente'},
+          {label:'Organizador',render:item=>eventOrganizerName(item.event)},
           {label:'Categoría y pago',render:item=><div className="registration-payment">{classificationLabel(item.categorySnapshot)}<p>{categoryPrice({priceCents:item.amountCents || 0,currency:item.currency || 'PEN'})} · {item.paymentInstructionsSnapshot?.label || 'Sin pago'}</p></div>},
           {label:'Fecha',render:item=><div className="registration-date"><OutlineIcon name="calendar"/><span>{date(item.event.startsAt)}</span></div>},
           {label:'Estado',render:item=><><Status value={item.status} label={states[item.status]}/>{item.reviewNote && <p className="registration-review">{item.reviewNote}</p>}</>},

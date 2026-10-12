@@ -10,7 +10,7 @@ import {categoryPrice,paymentTypes} from './EventSetup.jsx';
 async function guestApi(token,path,method='GET',body){const res=await fetch(base+path,{method,credentials:'omit',headers:{'X-Registration-Token':token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});const data=await res.json();if(!res.ok){const error=new Error(data.error?.message||'No se pudo completar la solicitud');error.status=res.status;throw error;}return data;}
 async function proofUpload(token,eventId,file){const res=await fetch(base+'/events/'+eventId+'/guest-proof',{method:'POST',credentials:'omit',headers:{'X-Registration-Token':token,'Content-Type':file.type,'X-File-Name':encodeURIComponent(file.name)},body:file});const data=await res.json();if(!res.ok)throw new Error(data.error?.message||'No se pudo cargar el comprobante');return data.file.id;}
 const general={id:null,name:'Inscripción general',priceCents:0,currency:'PEN',minAge:null,maxAge:null,gender:null};
-function participant(form){const data=new FormData(form);return {name:data.get('name'),lastName:data.get('lastName'),phone:data.get('phone'),birthDate:data.get('birthDate')||null,gender:data.get('gender')||null};}
+function participant(form){const data=new FormData(form);return {teamName:data.get('teamName')||'',name:data.get('name'),lastName:data.get('lastName'),phone:data.get('phone'),birthDate:data.get('birthDate')||null,gender:data.get('gender')||null};}
 const key=id=>'guest-registration:'+id;
 export function GuestEnrollment({event,close,initialCategoryId=''}){
  const resource=useData('/events/'+event.id+'/guest-registration-options'),action=useAction();
@@ -35,6 +35,7 @@ export function GuestRegistration({token}){
  const resource=useData('/guest-registration?token='+encodeURIComponent(token)),action=useAction(),[file,setFile]=useState(null),[copied,setCopied]=useState(false);
  const link=location.origin+'/inscripcion/'+token;
  return <section className="public-events"><h1>Tu inscripción</h1><State resource={resource}>{data=><article className="detail"><h2>{data.event.title}</h2><RegistrationStatus status={data.status}/><p>{data.participantSnapshot.name} {data.participantSnapshot.lastName} · {classificationLabel(data.categorySnapshot)}</p><p>{data.participantSnapshot.phone} · {categoryPrice({priceCents:data.amountCents,currency:data.currency})}</p>
+ <p>Team: {data.participantSnapshot.teamName || 'Independiente'}</p>
  <div className="callout form"><p>Guarda este enlace privado para consultar tu estado. Quien tenga el enlace podrá ver tu inscripción.</p><label>Enlace privado<input readOnly value={link} onFocus={e=>e.target.select()}/></label><button className="secondary" onClick={()=>action.run(async()=>{await navigator.clipboard.writeText(link);setCopied(true);})}>{copied?'Enlace copiado':'Copiar enlace'}</button></div>
  {data.reviewNote&&<p className="callout">{data.reviewNote}</p>}<PaymentInstructions method={data.paymentInstructionsSnapshot} qrPath={'/guest-registration/qr?token='+encodeURIComponent(token)}/>
  {data.payments.map(p=><p key={p.id}>{p.proofFileId&&<a className="button secondary" target="_blank" rel="noreferrer" href={base+'/guest-registration/payments/'+p.id+'/proof?token='+encodeURIComponent(token)}>Ver comprobante</a>}</p>)}

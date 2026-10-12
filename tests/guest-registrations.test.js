@@ -40,7 +40,7 @@ test('invitados: privacidad, idempotencia, cupos, observación/corrección y con
  const otherToken=(await send(other,'post','/events/'+event.id+'/guest-registration-token').expect(201)).body.token;
  const gsend=(t,path,body)=>request(app).post('/api'+path).set('Origin',origin).set('X-Registration-Token',t).send(body);
  const upload=async(t)=> (await request(app).post('/api/events/'+event.id+'/guest-proof').set('Origin',origin).set('X-Registration-Token',t).set('Content-Type','image/png').set('X-File-Name','proof.png').send(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jA1sAAAAASUVORK5CYII=','base64')).expect(201)).body.file.id;
- const person={name:'Luis',lastName:'Invitado',phone:'999555666',birthDate:'2000-01-01'};
+ const person={name:'Luis',lastName:'Invitado',phone:'999555666',birthDate:'2000-01-01',teamName:' COANF '};
  const path='/events/'+event.id+'/guest-registrations';
  const input={categoryId:category.id,methodId:method.id,participant:person};
  await gsend(token,path,input).expect(400);
@@ -50,10 +50,11 @@ test('invitados: privacidad, idempotencia, cupos, observación/corrección y con
  await gsend(token,path,{...input,proofFileId:await proof(outsider)}).expect(400);
  await gsend(token,path,{...input,proofFileId:ownFile,participant:{...person,phone:''}}).expect(400);
  await gsend(token,path,{...input,proofFileId:ownFile,amountCents:1}).expect(400);
+ await gsend(token,path,{...input,proofFileId:ownFile,participant:{...person,teamName:'x'.repeat(121)}}).expect(400);
  let r=(await gsend(token,path,{...input,proofFileId:ownFile}).expect(201)).body;
  assert.equal(r.status,'PENDING_REVIEW');
  assert.equal((await gsend(token,path,{...input,proofFileId:ownFile}).expect(201)).body.id,r.id);
- const row=await db.eventRegistration.findUnique({where:{id:r.id}});assert.equal(row.userId,null);assert.equal(row.profileId,null);assert.equal(row.amountCents,2500);assert.ok(row.guestAccessHash);assert.notEqual(row.guestAccessHash,token);
+ const row=await db.eventRegistration.findUnique({where:{id:r.id}});assert.equal(row.participantSnapshot.teamName,'COANF');assert.equal(row.userId,null);assert.equal(row.profileId,null);assert.equal(row.amountCents,2500);assert.ok(row.guestAccessHash);assert.notEqual(row.guestAccessHash,token);
  assert.equal((await db.paymentOperation.findUnique({where:{id:r.id}})).payerId,null);
  await gsend(otherToken,path,{...input,proofFileId:foreignFile}).expect(409);
  const get=()=>request(app).get('/api/guest-registration').set('X-Registration-Token',token);
@@ -69,10 +70,11 @@ test('invitados: privacidad, idempotencia, cupos, observación/corrección y con
  await outsider.agent.get('/api/registrations/'+r.id+'/payments/'+paymentId+'/proof').expect(403);
  const list=(await owner.agent.get('/api/events/'+event.id+'/registrations?q=Luis').expect(200)).body;assert.ok(list.items.some(x=>x.id===r.id));
  r=(await send(owner.agent,'post','/registrations/'+r.id+'/review',{version:detail.version,decision:'OBSERVED',note:'Comprobante más legible'}).expect(200)).body;
- const corrected={version:r.version,participant:{...person,phone:'999555777'},proofFileId:await upload(token)};
+ const corrected={version:r.version,participant:{...person,phone:'999555777',teamName:'Otro Team'},proofFileId:await upload(token)};
  await gsend(token,'/guest-registration/resubmit',{...corrected,version:r.version-1}).expect(409);
  await gsend(token,'/guest-registration/resubmit',corrected).expect(200);
- detail=(await get().expect(200)).body;assert.equal(detail.payments.length,2);assert.equal(detail.participantSnapshot.phone,'999555777');
+ detail=(await get().expect(200)).body;assert.equal(detail.payments.length,2);assert.equal(detail.participantSnapshot.phone,'999555777');assert.equal(detail.participantSnapshot.teamName,'Otro Team');
+ assert.equal((await owner.agent.get('/api/registrations/'+r.id).expect(200)).body.participantSnapshot.teamName,'Otro Team');
  await send(owner.agent,'post','/registrations/'+r.id+'/review',{version:detail.version,decision:'CONFIRMED'}).expect(200);
  detail=(await get().expect(200)).body;assert.equal(detail.status,'CONFIRMED');
  const freeR=(await gsend(otherToken,path,{categoryId:free.id,participant:{...person,name:'Marta'}}).expect(201)).body;

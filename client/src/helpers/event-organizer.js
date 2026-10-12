@@ -1,0 +1,1 @@
+export const eventOrganizerName = event => event.organizerName || (event.team?.name ? (/^team\b/i.test(event.team.name) ? event.team.name : 'Team '+event.team.name) : event.publicOrganizerName) || '';

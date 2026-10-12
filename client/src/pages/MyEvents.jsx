@@ -1,3 +1,4 @@
+import {eventOrganizerName} from '../helpers/event-organizer.js';
 import {visibleCapabilities} from '../app/capabilities.js';
 import {navigate} from '../services/navigation.js';
 import {IconAction} from '../components/IconAction.jsx';
@@ -46,7 +47,7 @@ export default function MyEvents({ team }) {
       const events = team ? allEvents.filter(event => event.teamId === team.id) : allEvents.filter(event=>visibleCapabilities.teams || !event.teamId);
       return events.length ? <section className="team-events-panel" aria-label="Eventos del equipo"><p className="muted team-events-count">{events.length} {events.length === 1 ? 'evento' : 'eventos'}</p><Records items={events} columns={[
         { label: 'Evento', render: event => <><div className="team-event-identity">{event.primaryImageFileId ? <img src={fileUrl(event.primaryImageFileId)} alt="" loading="lazy"/> : <span className="team-event-placeholder" aria-hidden="true"><OutlineIcon name="calendar"/></span>}<div><strong>{event.title}</strong>{event.venue && <small>{event.venue}</small>}</div></div>{event.reviewNote && <p className="team-event-review"><strong>Observaciones de Invictus:</strong> {event.reviewNote}</p>}</> },
-        ...(!team ? [{ label: 'Organización', render: event => event.team?.name || 'Personal' }] : []),
+        ...(!team ? [{ label: 'Organizador', render: event => eventOrganizerName(event) }] : []),
         { label: 'Fecha', render: event => <span className="team-event-date"><OutlineIcon name="calendar"/>{date(event.startsAt)}</span> },
         { label: 'Estado', render: event => <><Status value={event.status === 'DRAFT' ? event.reviewStatus || 'DRAFT' : event.status} label={event.lifecycle?.displayLabel}/>{event.lifecycle?.started&&<small>Fecha de inicio alcanzada</small>}</> },
       ]} actions={actions}/></section> : <div className="empty"><h2>Tu próximo evento empieza aquí</h2><p>Usa «Crear evento» para guardar tu primer borrador.</p></div>;

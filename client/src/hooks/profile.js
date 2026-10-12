@@ -22,7 +22,7 @@ export function useProfileEditor(profile,user,onSession) {
     name:profile?.name ?? user.name ?? '',lastName:profile?.lastName ?? user.lastName ?? '',
     username:profile?.username || user.username, dateOfBirth:profile?.dateOfBirth || '',
     gender:profile?.gender || '',documentType:profile?.documentType || '',
-    documentNumber:profile?.documentNumber || '',bio:profile?.bio || ''
+    teamName:profile?.teamName || '',documentNumber:profile?.documentNumber || '',bio:profile?.bio || ''
   });
   const [contact,setContact] = useState({
     phone:profile?.phone || '',countryCode:profile?.countryCode || 'PE',

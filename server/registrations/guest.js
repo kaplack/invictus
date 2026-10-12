@@ -5,7 +5,7 @@ import { prepareRegistration, participantInput, enrollmentInput, correctionInput
 
 // Capability belongs to one event/enrollment. Only its hash is persisted; no synthetic User/Profile.
 export function createGuestRegistrations({ database: db, commerce, categoryRegistrations, paymentsFor, files, config }) {
- const person = z.object({name:z.string().trim().min(1).max(80),lastName:z.string().trim().min(1).max(120),phone:z.string().trim().regex(/^\+?[0-9][0-9 ()-]{5,24}$/),birthDate:participantInput.shape.birthDate,gender:participantInput.shape.gender}).strict();
+ const person = z.object({name:z.string().trim().min(1).max(80),lastName:z.string().trim().min(1).max(120),phone:z.string().trim().regex(/^\+?[0-9][0-9 ()-]{5,24}$/),teamName:participantInput.shape.teamName,birthDate:participantInput.shape.birthDate,gender:participantInput.shape.gender}).strict();
  const inputSchema=enrollmentInput.extend({categoryId:z.uuid().nullable().default(null),participant:person});
  const signature=payload=>createHmac('sha256',config.FILE_SIGNING_KEY).update('guest-registration:'+payload).digest('hex');
  function identity(token,eventId) {

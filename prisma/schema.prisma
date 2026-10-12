@@ -511,6 +511,7 @@ model ExternalParticipation {
   @@map("external_participations")
 }
 model ParticipantProfile {
+  teamName String? @map("team_name") @db.VarChar(120)
   externalParticipations ExternalParticipation[]
   participantDisciplines ParticipantDiscipline[]
   websiteUrl String? @map("website_url") @db.VarChar(2048)

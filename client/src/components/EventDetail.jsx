@@ -1,3 +1,4 @@
+import {eventOrganizerName} from '../helpers/event-organizer.js';
 import {EventRulesLink} from './EventRules.jsx';
 import React,{useState,useEffect} from 'react';
 import {api,fileUrl} from '../services/api.js';
@@ -23,7 +24,7 @@ export function EventDetail({event,user}) {
  const categories=event.categories||[],selected=categories.find(c=>c.id===categoryId);
  const informational=event.mode==='INFORMATIONAL',past=!event.startsAt||new Date(event.startsAt)<=new Date();
  const price=selected?{label:'Inscripción',value:categoryPrice(selected)}:eventPrice(event);
- const organizer=event.publicOrganizerName||event.team?.name;
+ const organizer=eventOrganizerName(event);
  const shareUrl=typeof location==='undefined'?event.publicUrl:location.origin+'/eventos/'+event.publicSlug;
  const time=value=>value?new Intl.DateTimeFormat('es-PE',{hour:'numeric',minute:'2-digit',timeZone:event.timeZone||'America/Lima'}).format(new Date(value)):null;
  const startTime=time(event.startsAt);

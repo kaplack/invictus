@@ -16,6 +16,7 @@ export const athleteProfileInput = profileInput.partial().extend({
   websiteUrl: z.string().max(2048).nullable().optional(),
   socialLinks: z.array(z.object({platform:z.enum(['INSTAGRAM','TIKTOK','FACEBOOK','YOUTUBE','LINKEDIN']),url:z.string().max(2048)})).max(5).optional(),
   username: usernameSchema.optional(),
+  teamName: text(120),
   name: text(80), lastName: text(120),
   dateOfBirth: z.union([date,z.literal('')]).nullable().optional().transform(v => v === '' ? null : v),
   gender: z.enum(['MALE','FEMALE','NON_BINARY','SELF_DESCRIBED','PREFER_NOT_TO_SAY']).nullable().optional(),

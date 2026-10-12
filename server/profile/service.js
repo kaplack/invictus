@@ -5,7 +5,7 @@ import { sportsInclude, sportsView, saveSports } from './sports.js';
 import { parseDigital } from './digital.js';
 import { athleteProfileInput } from './validation.js';
 import { countries, ubigeos, ubigeoByCode } from './location.js';
-const extraKeys = ['name','lastName','dateOfBirth','gender','documentType','documentNumber','phone','countryCode','department','province','district','ubigeoCode','bannerFileId','websiteUrl'];
+const extraKeys = ['name','lastName','teamName','dateOfBirth','gender','documentType','documentNumber','phone','countryCode','department','province','district','ubigeoCode','bannerFileId','websiteUrl'];
 const identityKeys = ['name','lastName','username'];
 const own = actor => { if (!actor?.id) throw new AppError('Debes iniciar sesión',401,'UNAUTHENTICATED'); };
 const invalid = message => { throw new AppError(message,400,'INVALID_INPUT'); };

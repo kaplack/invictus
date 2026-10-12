@@ -9,6 +9,7 @@ export const participantInput = z.object({
   birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null),
   gender: z.enum(['FEMALE', 'MALE']).nullable().default(null),
   phone: z.string().trim().max(40).default(''),
+  teamName: z.string().trim().max(120).default(''),
 }).strict();
 export const enrollmentInput = z.object({ categoryId: z.uuid().nullable().default(null), modality:z.string().trim().max(100).nullable().default(null), methodId: z.uuid().nullable().default(null),
   participant: participantInput, proofFileId: z.uuid().nullable().default(null) }).strict();

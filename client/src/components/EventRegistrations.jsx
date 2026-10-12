@@ -23,6 +23,7 @@ export default function EventRegistrations({ event, close, embedded = false }) {
       {r.error&&<div role="alert"><p>{r.error}</p><button type="button" className="secondary" onClick={r.reload}>Reintentar</button></div>}
       <div className="registration-results" aria-busy={r.loading} inert={r.loading||!!r.error}>
       <Records items={data.items} mobileContent={i=><CompactParticipant item={i}/>} columns={[
+        { label: 'Team', render: i => i.participantSnapshot?.teamName || 'Independiente' },
         { label: 'Participante', render: i => <>{userLabel(i.participantSnapshot || i.user)}<p>{i.participantSnapshot?.phone || i.user?.email || ''}</p></> },
         { label: 'Categoría', render: i => <>{classificationLabel(i.categorySnapshot)}{i.categorySnapshot?.classificationWarning&&<p className="callout">{i.categorySnapshot.classificationWarning}</p>}</> },
         { label: 'Importe y método', render: i => <>{categoryPrice({ priceCents: i.amountCents || 0, currency: i.currency || 'PEN' })}<p>{i.paymentInstructionsSnapshot?.label || 'Sin pago'}</p></> },

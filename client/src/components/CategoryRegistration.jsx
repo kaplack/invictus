@@ -1,3 +1,4 @@
+import {eventOrganizerName} from '../helpers/event-organizer.js';
 import {classificationLabel} from '../helpers/registration-classification.js';
 import { userLabel } from '../helpers/user.js';
 import React, { useState } from 'react';
@@ -15,13 +16,14 @@ const amount = r => categoryPrice({ priceCents: r.amountCents || 0, currency: r.
 export function ParticipantFields({ category, participant = {}, guest = false, modalityValue, onModalityChange }) {
   return <><p>Los datos son privados para ti y el organizador.</p><div className="form-grid">
     {guest && <><Field label="Nombres" name="name" required maxLength={80} defaultValue={participant.name || ''}/><Field label="Apellidos" name="lastName" required maxLength={120} defaultValue={participant.lastName || ''}/></>}
+    <Field label="Team" name="teamName" maxLength={120} defaultValue={participant.teamName || ''} placeholder="Nombre de tu Team"/>
     <Field label="Fecha de nacimiento" name="birthDate" type="date" required defaultValue={participant.birthDate || ''} max={new Date().toISOString().slice(0,10)}/>
     {(category.gender || category.competitionConfig?.genderEnabled) && <label>Género<select aria-label="Género" name="gender" required defaultValue={participant.gender || ''}><option value="">Sin indicar</option><option value="FEMALE">Femenino</option><option value="MALE">Masculino</option></select></label>}
     <Field label={guest ? 'Teléfono' : 'Teléfono (opcional)'} required={guest} name="phone" type="tel" maxLength={40} defaultValue={participant.phone || ''}/>
   </div>{(category.modalities||[]).length>0&&<><label>Modalidad<select aria-label="Modalidad" name="modality" required value={modalityValue} onChange={e=>onModalityChange?.(e.target.value)}><option value="">Selecciona una modalidad</option>{category.modalities.map(m=><option key={m.name} value={m.name}>{m.name}</option>)}</select></label>{category.modalities.find(m=>m.name===modalityValue)?.description&&<p className="preline">{category.modalities.find(m=>m.name===modalityValue).description}</p>}</>}</>;
 }
-function participantFrom(form) { const f = new FormData(form); return { birthDate: f.get('birthDate') || null, gender: f.get('gender') || null, phone: f.get('phone') || '' }; }
-export function ProofField({ required, setFile }) { return <label>Comprobante privado{required ? ' (obligatorio)' : ' (opcional)'} · imagen o PDF, hasta 10 MB<input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" required={required} onChange={e => setFile(e.target.files[0] || null)}/></label>; }
+function participantFrom(form) { const f = new FormData(form); return { teamName: f.get('teamName') || '', birthDate: f.get('birthDate') || null, gender: f.get('gender') || null, phone: f.get('phone') || '' }; }
+export function ProofField({ required, setFile }) { return <label>Comprobante privado{required ? ' (obligatorio)' : ' (opcional)'} · imagen o PDF, hasta 10 MB<input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" required={required} onChange={e => {const selected=e.target.files?.[0];if(selected)setFile(selected);}}/></label>; }
 export function PaymentInstructions({ method: m, qrPath }) {
   if (!m) return null;
   return <section className="card"><h4>{[...new Set([m.label, paymentTypes[m.type]].filter(Boolean))].join(' · ')}</h4>
@@ -70,10 +72,11 @@ export function RegistrationDetail({ id, manager = false, changed = () => {}, in
       <button type="button" id={`history-tab-${id}`} data-tab="history" role="tab" aria-selected={tab==='history'} aria-controls={`history-panel-${id}`} tabIndex={tab==='history'?0:-1} onClick={()=>setTab('history')}>Historial ({data.audits.length})</button>
     </div>}
     <div hidden={manager&&tab!=='registration'} role={manager?'tabpanel':undefined} id={`registration-panel-${id}`} aria-labelledby={manager?`registration-tab-${id}`:undefined} tabIndex={manager?0:undefined}>
-    <h3>{data.event.title} · {classificationLabel(data.categorySnapshot)}</h3><p>Organiza: {data.event.publicOrganizerName || data.event.team?.name || 'Organizador independiente'}</p>
+    <h3>{data.event.title} · {classificationLabel(data.categorySnapshot)}</h3><p>Organiza: {eventOrganizerName(data.event)}</p>
     <RegistrationStatus status={data.status}/><p><strong>{amount(data)}</strong> · {data.paymentInstructionsSnapshot?.label || 'Sin pago'}</p>
     {manager&&<h4>Participante</h4>}
     <p>{userLabel(data.participantSnapshot)} · {data.participantSnapshot.email}</p>
+    <p>Team: {data.participantSnapshot.teamName || 'Independiente'}</p>
     <p>{[data.participantSnapshot.birthDate && `Nacimiento: ${data.participantSnapshot.birthDate}`, data.participantSnapshot.gender === 'FEMALE' ? 'Femenino' : data.participantSnapshot.gender === 'MALE' ? 'Masculino' : '', data.participantSnapshot.phone && `Teléfono: ${data.participantSnapshot.phone}`].filter(Boolean).join(' · ')}</p>
     {manager&&data.categorySnapshot.classificationWarning&&<p className="callout">{data.categorySnapshot.classificationWarning}. Evalúa la participación antes de confirmar.</p>}
     {data.reviewNote && <p className="callout"><strong>Motivo del organizador:</strong> {data.reviewNote}</p>}

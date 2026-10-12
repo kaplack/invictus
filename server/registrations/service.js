@@ -1,3 +1,4 @@
+import {withEventOrganizer} from '../profile/event-organizer.js';
 import {profileNamesSelect,identityView,withUserIdentity} from '../profile/identity.js';
 import { z } from 'zod';
 import { requireEventManager, lockManagedEvent, teamSummary } from '../teams/event-access.js';
@@ -11,7 +12,7 @@ export function createCategoryRegistrations({ database: db, commerce, registrati
     const r = await database.eventRegistration.findUnique({ where: { id }, include: { event: { include: { team: { select: teamSummary } } }, user: { select: person } } });
     if (!r || (!r.categoryId && !r.guestAccessHash && !r.participantSnapshot)) fail('Inscripción no disponible', 'NOT_FOUND', 404);
     if (manager || r.userId !== user.id) await requireEventManager(database, user, r.event);
-    return withUserIdentity(r);
+    return withUserIdentity({...r,event:await withEventOrganizer(database,r.event)});
   }
   async function openEvent(id) {
     uuid.parse(id);

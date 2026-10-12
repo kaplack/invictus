@@ -1,3 +1,4 @@
+import {withEventOrganizer} from './profile/event-organizer.js';
 import {personalLifecycle} from './event-setup/lifecycle.js';
 import {profileNamesSelect,identityView} from './profile/identity.js';
 import {AppError} from '@base/usuarios-acceso';
@@ -13,7 +14,7 @@ export function createPersonalEvents({db,commerce,eventsFor,registrationsFor}) {
       throw new AppError('Solo puedes editar borradores o eventos devueltos con observaciones',409,'REVIEW_LOCKED');
   };
   return {
-    async list(actor) {const rows=await db.event.findMany({where:{AND:[managedEventWhere(actor),{mode:'MANAGED'}]},include:{team:{select:teamSummary},_count:{select:{registrationEventRows:true}}},orderBy:{createdAt:'desc'}});return rows.map(event=>({...event,...(!event.teamId?{lifecycle:personalLifecycle(event,event._count.registrationEventRows)}:{})}));},
+    async list(actor) {const rows=await db.event.findMany({where:{AND:[managedEventWhere(actor),{mode:'MANAGED'}]},include:{team:{select:teamSummary},_count:{select:{registrationEventRows:true}}},orderBy:{createdAt:'desc'}});return Promise.all(rows.map(async event=>({...await withEventOrganizer(db,event),...(!event.teamId?{lifecycle:personalLifecycle(event,event._count.registrationEventRows)}:{})})));},
     async get(actor,id) {
       const event=await eventsFor(db).getManaged(actor,id);
       return {...event,...(!event.teamId?{lifecycle:personalLifecycle(event,await db.eventRegistration.count({where:{eventId:id}}))}:{}),team:event.teamId?await db.team.findUnique({where:{id:event.teamId},select:teamSummary}):null,configuration:await db.eventRegistrationConfig.findUnique({where:{eventId:id}})};

@@ -22,7 +22,7 @@ export function Account({user,onSession}) {
 }
 function BasicProfile({profile,user,onSession}) {
   const action=useAction();
-  const [values,setValues]=useState({name:profile?.name || '',lastName:profile?.lastName || '',documentNumber:profile?.documentType==='DNI'?profile.documentNumber || '':'',phone:profile?.phone || ''});
+  const [values,setValues]=useState({name:profile?.name || '',lastName:profile?.lastName || '',documentNumber:profile?.documentType==='DNI'?profile.documentNumber || '':'',phone:profile?.phone || '',teamName:profile?.teamName || ''});
   const change=event=>setValues(current=>({...current,[event.target.name]:event.target.value}));
   return <div className="profile-content profile-basic"><section className="profile-personal">
     <h1>Perfil básico</h1><p className="profile-intro">Completa estos datos para crear eventos. Tu DNI y teléfono son privados.</p>
@@ -36,6 +36,7 @@ function BasicProfile({profile,user,onSession}) {
         <div className="profile-grid">
           <ProfileField label="Nombres" name="name" value={values.name} onChange={change} required maxLength={80} autoComplete="given-name"/>
           <ProfileField label="Apellidos" name="lastName" value={values.lastName} onChange={change} required maxLength={120} autoComplete="family-name"/>
+          <ProfileField label="Team (opcional)" name="teamName" value={values.teamName} onChange={change} maxLength={120} placeholder="COANF"/>
           <ProfileField label="DNI" name="documentNumber" value={values.documentNumber} onChange={change} required pattern="[0-9]{8}" maxLength={8} inputMode="numeric"/>
           <ProfileField label="Teléfono" name="phone" type="tel" value={values.phone} onChange={event=>setValues(current=>({...current,phone:event.target.value.replace(/[\s()-]/g,'')}))} required pattern="\+[1-9][0-9]{6,14}" maxLength={16} autoComplete="tel" placeholder="+51987654321"/>
         </div>
@@ -148,6 +149,7 @@ function ProfileEditor({profile,user,onSession}) {
                 {availability.status==='error' && <>No pudimos comprobar la disponibilidad. <button type="button" onClick={availability.retry}>Volver a comprobar</button></>}
               </div>
               <div className="profile-grid">
+                <ProfileField label="Team (opcional)" name="teamName" value={info.teamName} onChange={changeInfo} maxLength={120} placeholder="COANF"/>
                 <ProfileField label="Fecha de nacimiento" name="dateOfBirth" type="date" value={info.dateOfBirth} onChange={changeInfo} max={new Date().toISOString().slice(0,10)} autoComplete="bday"/>
                 <ProfileField label="Género" name="gender" value={info.gender} onChange={changeInfo}>
                   <option value="">Sin indicar</option><option value="MALE">Masculino</option><option value="FEMALE">Femenino</option>
