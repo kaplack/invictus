@@ -1,3 +1,4 @@
+import CompetitorNumber from './CompetitorNumber.jsx';
 import {eventOrganizerName} from '../helpers/event-organizer.js';
 import {classificationLabel} from '../helpers/registration-classification.js';
 import { userLabel } from '../helpers/user.js';
@@ -73,7 +74,7 @@ export function RegistrationDetail({ id, manager = false, changed = () => {}, in
     </div>}
     <div hidden={manager&&tab!=='registration'} role={manager?'tabpanel':undefined} id={`registration-panel-${id}`} aria-labelledby={manager?`registration-tab-${id}`:undefined} tabIndex={manager?0:undefined}>
     <h3>{data.event.title} · {classificationLabel(data.categorySnapshot)}</h3><p>Organiza: {eventOrganizerName(data.event)}</p>
-    <RegistrationStatus status={data.status}/><p><strong>{amount(data)}</strong> · {data.paymentInstructionsSnapshot?.label || 'Sin pago'}</p>
+    <RegistrationStatus status={data.status}/><CompetitorNumber number={data.competitorNumber}/><p><strong>{amount(data)}</strong> · {data.paymentInstructionsSnapshot?.label || 'Sin pago'}</p>
     {manager&&<h4>Participante</h4>}
     <p>{userLabel(data.participantSnapshot)} · {data.participantSnapshot.email}</p>
     <p>Team: {data.participantSnapshot.teamName || 'Independiente'}</p>

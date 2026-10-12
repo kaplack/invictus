@@ -28,6 +28,10 @@ test('invitados: privacidad, idempotencia, cupos, observación/corrección y con
  await send(owner.agent,'put','/profile',{name:'Ana',lastName:'Organiza',documentType:'DNI',documentNumber:'12345678',phone:'+51999111222'}).expect(200);
  const event=(await send(owner.agent,'post','/events/mine',{title:'Invitados '+randomUUID(),description:'Carrera con invitados',startsAt:'2027-09-01T14:00:00Z',timeZone:'America/Lima',venue:'Lima',maxCapacity:2}).expect(201)).body;
  const discipline=(await request(app).get('/api/disciplines').expect(200)).body[0];await send(owner.agent,'patch','/events/mine/'+event.id,{title:event.title,description:event.description,startsAt:event.startsAt,timeZone:event.timeZone,venue:event.venue,maxCapacity:2,disciplineId:discipline.id}).expect(200);
+ await send(owner.agent,'patch','/events/mine/'+event.id,{publicOrganizerPhone:'incorrecto'}).expect(400);
+ await send(outsider.agent,'patch','/events/mine/'+event.id,{publicOrganizerPhone:'999777888'}).expect(403);
+ await send(owner.agent,'patch','/events/mine/'+event.id,{publicOrganizerPhone:'999777888'}).expect(200);
+ assert.equal((await owner.agent.get('/api/events/mine/'+event.id).expect(200)).body.publicOrganizerPhone,'999777888');
  const category=(await send(owner.agent,'post','/events/'+event.id+'/categories',{name:'5K',priceCents:2500,capacity:1}).expect(201)).body;
  const free=(await send(owner.agent,'post','/events/'+event.id+'/categories',{name:'Libre',priceCents:0}).expect(201)).body;
  const method=(await send(owner.agent,'post','/events/'+event.id+'/payment-methods',{type:'YAPE',label:'Yape',holderName:'Ana',phone:'999111222',qrFileId:await proof(owner)}).expect(201)).body;
@@ -59,6 +63,13 @@ test('invitados: privacidad, idempotencia, cupos, observación/corrección y con
  await gsend(otherToken,path,{...input,proofFileId:foreignFile}).expect(409);
  const get=()=>request(app).get('/api/guest-registration').set('X-Registration-Token',token);
  let detail=(await get().expect(200)).body;
+ assert.match(detail.registrationCode,/^INV-[A-H2-9]{4}(?:-[A-H2-9]{4}){3}$/);
+ const lookup=(await send(request(app),'post','/registration-status',{code:detail.registrationCode.toLowerCase().replaceAll('-',' ')}).expect(200)).body;
+ assert.equal(detail.competitorNumber,null);assert.equal(lookup.competitorNumber,null);assert.equal(detail.event.publicOrganizerPhone,'999777888');assert.equal(lookup.event.publicOrganizerPhone,'999777888');assert.equal(lookup.status,'PENDING_REVIEW');assert.equal(lookup.event.title,event.title);
+ assert.deepEqual(Object.keys(lookup).sort(),['categorySnapshot','code','competitorNumber','event','status']);
+ assert.equal(JSON.stringify(lookup).includes(person.phone),false);
+ await send(request(app),'post','/registration-status',{code:'INV-ZZZZ-ZZZZ-ZZZZ-ZZZZ'}).expect(404);
+ await send(request(app),'post','/registration-status',{}).expect(404);
  await request(app).get('/api/guest-registration').expect(404);
  await request(app).get('/api/guest-registration').set('X-Registration-Token',otherToken).expect(404);
  await request(app).get('/api/guest-registration').set('X-Registration-Token',token.slice(0,-1)+'z').expect(404);
@@ -75,10 +86,21 @@ test('invitados: privacidad, idempotencia, cupos, observación/corrección y con
  await gsend(token,'/guest-registration/resubmit',corrected).expect(200);
  detail=(await get().expect(200)).body;assert.equal(detail.payments.length,2);assert.equal(detail.participantSnapshot.phone,'999555777');assert.equal(detail.participantSnapshot.teamName,'Otro Team');
  assert.equal((await owner.agent.get('/api/registrations/'+r.id).expect(200)).body.participantSnapshot.teamName,'Otro Team');
- await send(owner.agent,'post','/registrations/'+r.id+'/review',{version:detail.version,decision:'CONFIRMED'}).expect(200);
- detail=(await get().expect(200)).body;assert.equal(detail.status,'CONFIRMED');
  const freeR=(await gsend(otherToken,path,{categoryId:free.id,participant:{...person,name:'Marta'}}).expect(201)).body;
- await send(owner.agent,'post','/registrations/'+freeR.id+'/review',{version:2,decision:'CONFIRMED'}).expect(200);
+ await Promise.all([
+  send(owner.agent,'post','/registrations/'+r.id+'/review',{version:detail.version,decision:'CONFIRMED'}).expect(200),
+  send(owner.agent,'post','/registrations/'+freeR.id+'/review',{version:2,decision:'CONFIRMED'}).expect(200)
+ ]);
+ detail=(await get().expect(200)).body;assert.equal(detail.status,'CONFIRMED');
+ const freeRow=await db.eventRegistration.findUnique({where:{id:freeR.id}});assert.notEqual(freeRow.registrationCode,detail.registrationCode);assert.deepEqual([freeRow.competitorNumber,detail.competitorNumber].sort(),[1,2]);
+ const byNumber=(await owner.agent.get('/api/events/'+event.id+'/registrations?q='+String(detail.competitorNumber).padStart(4,'0')).expect(200)).body;assert.ok(byNumber.items.some(x=>x.id===r.id));
+ await assert.rejects(db.eventRegistration.update({where:{id:freeR.id},data:{registrationCode:detail.registrationCode}}),e=>e.code==='P2002');
+ const confirmedLookup=(await send(request(app),'post','/registration-status',{code:detail.registrationCode}).expect(200)).body;assert.equal(confirmedLookup.status,'CONFIRMED');assert.equal(confirmedLookup.competitorNumber,detail.competitorNumber);
+ await db.eventRegistration.update({where:{id:r.id},data:{status:'CANCELLED'}});
+ const replacementToken=(await send(request(app),'post','/events/'+event.id+'/guest-registration-token').expect(201)).body.token;
+ const replacement=(await gsend(replacementToken,path,{categoryId:free.id,participant:{...person,name:'Reemplazo'}}).expect(201)).body;
+ const replacementReview=(await send(owner.agent,'post','/registrations/'+replacement.id+'/review',{version:2,decision:'CONFIRMED'}).expect(200)).body;assert.equal(replacementReview.competitorNumber,3);
+ assert.equal((await db.eventRegistration.findUnique({where:{id:r.id}})).competitorNumber,detail.competitorNumber);
  assert.equal(await db.user.count(),usersBefore);assert.equal(await db.participantProfile.count(),profilesBefore);
  assert.equal(await db.registrationAudit.count({where:{registrationId:r.id,actorId:null}}),2);
 });
@@ -91,5 +113,5 @@ test('invitado: evento gratuito sin categorías permite revisión en consola',as
  const r=(await request(app).post('/api/events/'+event.id+'/guest-registrations').set('Origin',origin).set('X-Registration-Token',token).send({participant:{name:'Luis',lastName:'Gratis',phone:'999555666',birthDate:'2000-01-01'}}).expect(201)).body;
  await owner.agent.get('/api/registrations/'+r.id).expect(200);
  await send(owner.agent,'post','/registrations/'+r.id+'/review',{version:2,decision:'CONFIRMED'}).expect(200);
- assert.equal((await request(app).get('/api/guest-registration').set('X-Registration-Token',token).expect(200)).body.status,'CONFIRMED');
+ const accepted=(await request(app).get('/api/guest-registration').set('X-Registration-Token',token).expect(200)).body;assert.equal(accepted.status,'CONFIRMED');assert.equal(accepted.competitorNumber,1);assert.equal(accepted.event.publicOrganizerPhone,null);
 });

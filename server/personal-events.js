@@ -26,7 +26,13 @@ export function createPersonalEvents({db,commerce,eventsFor,registrationsFor}) {
       return rows.map(r=>({id:r.id,status:r.status,participant:r.participantSnapshot || identityView(users.find(u=>u.id===r.userId))}));
     },
     async save(actor,id,input) {
-      let {maxCapacity,teamId,disciplineId,...data}=input;
+      let {maxCapacity,teamId,disciplineId,publicOrganizerPhone,...data}=input;
+      if(publicOrganizerPhone!==undefined){
+        if(publicOrganizerPhone!==null&&typeof publicOrganizerPhone!=='string')throw new AppError('Escribe un WhatsApp válido',400,'INVALID_INPUT');
+        publicOrganizerPhone=publicOrganizerPhone?.trim()||null;
+        const digits=publicOrganizerPhone?.replace(/\D/g,'')||'';
+        if(publicOrganizerPhone&&(!/^[+\d][\d\s().-]*$/.test(publicOrganizerPhone)||publicOrganizerPhone.length>40||!(/^9\d{8}$/.test(digits)||/^519\d{8}$/.test(digits)||(publicOrganizerPhone.startsWith('+')&&/^[1-9]\d{7,14}$/.test(digits)))))throw new AppError('Usa un celular peruano de 9 dígitos o un número con código de país (+)',400,'INVALID_INPUT');
+      }
       if(!id && maxCapacity===undefined)maxCapacity=50;
       if(maxCapacity!==undefined&&!z.number().int().min(1).max(1000000).safeParse(maxCapacity).success)throw new AppError('Indica un cupo entre 1 y 1000000',400,'INVALID_CAPACITY');
       if('status' in data)throw new AppError('Usa las acciones de publicación para cambiar el estado',403,'FORBIDDEN');
@@ -62,7 +68,8 @@ export function createPersonalEvents({db,commerce,eventsFor,registrationsFor}) {
           if(await database.eventRegistration.count({where:{eventId:event.id}}))throw new AppError('El cupo queda fijo tras recibir inscripciones',409,'CONFIG_IN_USE');
           await database.eventRegistrationConfig.update({where:{eventId:event.id},data:{maxCapacity}});
         }
-        return {...event,...(disciplineId!==undefined?{disciplineId}:{})};
+        if(publicOrganizerPhone!==undefined)await database.event.update({where:{id:event.id},data:{publicOrganizerPhone}});
+        return {...event,...(publicOrganizerPhone!==undefined?{publicOrganizerPhone}:{}),...(disciplineId!==undefined?{disciplineId}:{})};
       });
     },
     async publication(actor,id,publish) {

@@ -1,5 +1,6 @@
 import React from 'react';
 const paths = {
+  ticket: <><path d="M3 5h18v5a2 2 0 0 0 0 4v5H3v-5a2 2 0 0 0 0-4V5Z"/><path d="M15 5v3m0 3v2m0 3v3"/></>,
   clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
   alert: <><circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 3v1"/></>,
   check: <path d="m5 12 4 4L19 6"/>,

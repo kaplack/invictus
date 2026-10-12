@@ -286,6 +286,7 @@ model TeamMember {
   @@map("team_members")
 }
 model Event {
+  competitorSequence Int @default(0) @map("competitor_sequence")
     meetingAt DateTime? @map("meeting_at") @db.Timestamptz(6)
     meetingVenue String? @map("meeting_venue") @db.VarChar(500)
     kitDateFrom DateTime? @map("kit_date_from") @db.Date
@@ -553,6 +554,8 @@ model ParticipantProfile {
 }
 
 model EventRegistration {
+  competitorNumber Int? @map("competitor_number")
+  registrationCode String @unique @default(dbgenerated("invictus_registration_code()")) @map("registration_code") @db.VarChar(23)
   guestAccessHash String? @unique @map("guest_access_hash") @db.Char(64)
   categoryId String? @map("category_id") @db.Uuid
   category EventCategory? @relation(fields: [categoryId, eventId], references: [id, eventId], onDelete: Restrict, onUpdate: NoAction)
@@ -581,6 +584,7 @@ model EventRegistration {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   @@unique([eventId, userId])
+  @@unique([eventId, competitorNumber])
   @@index([eventId, status], map: "event_registrations_event_status_idx")
   @@index([categoryId, status])
   @@map("event_registrations")

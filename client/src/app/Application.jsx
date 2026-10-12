@@ -1,3 +1,4 @@
+import PublicRegistrationReceipt from '../components/PublicRegistrationReceipt.jsx';
 import {currentRoute, navigate, interceptNavigation} from '../services/navigation.js';
 import {visibleCapabilities} from "./capabilities.js";
 import {GuestRegistration} from '../components/GuestRegistration.jsx';
@@ -88,6 +89,7 @@ export default function Application() {
   else if (route === "/cotizar") page = <Quote />;
   else if (route === "/cuenta" || route === "/perfil")
     page = <Account user={user} onSession={setUser} />;
+  else if (route.startsWith('/constancia/')) page = <PublicRegistrationReceipt key={route} code={decodeURIComponent(route.split('/')[2])}/>;
   else if (route.startsWith('/inscripcion/')) page = <GuestRegistration key={route} token={route.split('/')[2]}/>;
   else if (route === "/inscripciones") page = <Registrations />;
   else if (route === "/mis-eventos/nuevo") page = <EventEditor key="new"/>;
@@ -105,7 +107,7 @@ export default function Application() {
     );
   if (visibleCapabilities.teams && user && route.startsWith("/mis-teams/")) return page;
   return (
-    <div className={(route === "/mis-teams" || route.startsWith("/mis-eventos") || route === "/pedidos" || route === "/inscripciones" || route === "/perfil" || route === "/cuenta" || route === "/acceso" || (protectedRoute && !user) || route === "/" || route === "/teams" || route.startsWith("/teams/") || route === "/eventos" || route.startsWith("/eventos/") || route === "/tienda") ? "landing-shell" : undefined}>
+    <div className={(route === "/mis-teams" || route.startsWith("/mis-eventos") || route === "/pedidos" || route === "/inscripciones" || route === "/perfil" || route === "/cuenta" || route === "/acceso" || (protectedRoute && !user) || route === "/" || route === "/teams" || route.startsWith("/teams/") || route === "/eventos" || route.startsWith("/eventos/") || route === "/tienda" || route.startsWith("/inscripcion/") || route.startsWith("/constancia/")) ? "landing-shell" : undefined}>
       <a className="skip" href="#main">
         Ir al contenido
       </a>

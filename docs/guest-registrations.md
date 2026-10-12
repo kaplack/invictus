@@ -36,3 +36,25 @@ Comprobantes solo accesibles mediante token correspondiente o permiso de gestió
 ## Pendientes del MVP
 
 Home compacto con eventos, navegación y módulos fuera de alcance ocultos, revisión final de identidad Profile/User y despliegue. Las capacidades existentes de Teams/perfil ampliado/tienda se conservan.
+
+## Consulta por código — 2026-10-12
+
+Cada inscripción tiene un código aleatorio global `INV-XXXX-XXXX-XXXX-XXXX`, distinto del código de participación/check-in. La base de datos lo asigna también a registros existentes y exige unicidad. La constancia de invitado muestra el código y permite copiarlo o guardar el enlace privado, con el tema Invictus y layout compacto móvil.
+
+El home consulta `POST /api/registration-status` con `{code}`; acepta minúsculas, espacios y guiones. Devuelve exclusivamente código, evento, clasificación y estado, sin identidad, teléfono, notas de revisión ni archivos. Límite de 15 consultas por minuto/IP y respuesta sin caché. Datos personales, observaciones, comprobantes y correcciones siguen requiriendo el enlace privado. No hay recuperación de enlaces mediante código.
+
+Verificación mínima: dos pruebas de invitados, incluyendo formato, persistencia, consulta normalizada, código inexistente, unicidad en base de datos y privacidad; build web; script `check-registration-lookup-ui.mjs` a 390/1440 px con API simulada para copia, pago desplegable, error y resultado. Capturas inspeccionadas visualmente.
+
+## Número de competidor y constancia desde el home — 2026-10-12
+
+`competitorNumber` es un entero opcional separado del código de consulta. Se asigna automáticamente al pasar a CONFIRMED, desde 1 por evento; la UI lo presenta con al menos cuatro cifras (`0001`). Un contador persistente y un trigger de PostgreSQL serializan aceptaciones, con unicidad evento/número. El número no se cambia ni reutiliza tras cancelaciones. La migración numera también las inscripciones ya aceptadas/finalizadas, por primera aceptación registrada (o creación si no hay auditoría).
+
+Se muestra en constancia privada, consulta del home, constancia pública limitada, detalle y listados de participantes/cuenta. El organizador puede buscar `0027`. El home ofrece “Ver constancia” como acción principal y “Ver evento” como secundaria; `/constancia/:code` usa únicamente la respuesta limitada del buscador, sin revelar identidad, comprobantes ni acceso de corrección.
+
+Verificación: dos pruebas de invitados ampliadas para pendientes sin número, aceptaciones concurrentes, correlativo por evento, búsqueda y conservación tras cancelar; build web; UI simulada a 390/1440 px incluyendo navegación home/constancia y número `0027`. Captura móvil inspeccionada.
+
+## Contacto por WhatsApp — 2026-10-12
+
+Las constancias pública limitada y privada muestran “Contactar al organizador” con icono cuando el evento tiene `publicOrganizerPhone` válido. El organizador configura o elimina este contacto público opcional en Información del evento. Se aceptan celulares peruanos de nueve cifras (se agrega +51) y números internacionales con prefijo +. No se usan teléfonos privados de perfiles ni datos de pago como contacto. El enlace abre WhatsApp con un texto preparado que incluye evento y código de inscripción, sin enviar mensajes automáticamente ni incluir el token privado.
+
+Verificación mínima: build web, dos pruebas de invitados (persistencia, permisos, validación y contacto ausente), revisión móvil/escritorio con API simulada y comprobación del destino/texto del enlace.

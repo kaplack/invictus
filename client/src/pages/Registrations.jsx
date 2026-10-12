@@ -1,3 +1,4 @@
+import CompetitorNumber from '../components/CompetitorNumber.jsx';
 import {eventOrganizerName} from '../helpers/event-organizer.js';
 import {classificationLabel} from '../helpers/registration-classification.js';
 import React, { useState } from 'react';
@@ -31,7 +32,7 @@ export function Registrations() {
           {label:'Organizador',render:item=>eventOrganizerName(item.event)},
           {label:'Categoría y pago',render:item=><div className="registration-payment">{classificationLabel(item.categorySnapshot)}<p>{categoryPrice({priceCents:item.amountCents || 0,currency:item.currency || 'PEN'})} · {item.paymentInstructionsSnapshot?.label || 'Sin pago'}</p></div>},
           {label:'Fecha',render:item=><div className="registration-date"><OutlineIcon name="calendar"/><span>{date(item.event.startsAt)}</span></div>},
-          {label:'Estado',render:item=><><Status value={item.status} label={states[item.status]}/>{item.reviewNote && <p className="registration-review">{item.reviewNote}</p>}</>},
+          {label:'Estado',render:item=><><CompetitorNumber number={item.competitorNumber} compact/><Status value={item.status} label={states[item.status]}/>{item.reviewNote && <p className="registration-review">{item.reviewNote}</p>}</>},
         ]} actions={item=><>
           {item.event.status === 'PUBLISHED' && item.event.publicSlug && <a className="registration-event-link" href={`/eventos/${encodeURIComponent(item.event.publicSlug)}`}>Ver evento <span aria-hidden="true">→</span></a>}
           {(item.categoryId||item.categorySnapshot?.requiresBirthDate) && <button className="registration-detail-button" onClick={()=>setSelected(item.id)}>{item.status === 'OBSERVED' ? 'Corregir inscripción' : 'Ver inscripción'}</button>}

@@ -18,6 +18,14 @@ export function createGuestRegistrations({ database: db, commerce, categoryRegis
  async function own(token){const actor=identity(token);const r=await db.eventRegistration.findUnique({where:{guestAccessHash:actor.guestAccessHash},include:{event:true}});if(!r||r.eventId!==actor.eventId)fail('Inscripción no disponible','NOT_FOUND',404);return {actor,r};}
  async function sendContent(id){const f=await db.storedFile.findUnique({where:{id}});if(!f||f.deletedAt)fail('Archivo no disponible','NOT_FOUND',404);const actor={id:f.ownerId,guestAccessHash:f.guestAccessHash},access=await files.access(id,actor);return files.content(id,actor,Object.fromEntries(new URLSearchParams(access.path.split('?')[1])));}
  return {
+  async lookup(raw){
+   const compact=typeof raw==='string'?raw.toUpperCase().replace(/[\s-]/g,''):'';
+   if(!/^INV[A-H2-9]{16}$/.test(compact))fail('No encontramos esa inscripción. Revisa el código.','NOT_FOUND',404);
+   const code='INV-'+compact.slice(3).match(/.{4}/g).join('-');
+   const r=await db.eventRegistration.findUnique({where:{registrationCode:code},select:{registrationCode:true,competitorNumber:true,status:true,categorySnapshot:true,event:{select:{title:true,publicSlug:true,publicOrganizerPhone:true}}}});
+   if(!r)fail('No encontramos esa inscripción. Revisa el código.','NOT_FOUND',404);
+   return {code:r.registrationCode,competitorNumber:r.competitorNumber,status:r.status,categorySnapshot:{name:r.categorySnapshot?.name,classification:r.categorySnapshot?.classification},event:r.event};
+  },
   async start(eventId){await open(eventId);const payload=eventId+'.'+randomBytes(32).toString('hex');return {token:payload+'.'+signature(payload)};},
   async options(eventId){return categoryRegistrations.options(null,eventId);},
   async upload(token,eventId,input){const actor=identity(token,eventId);const registration=await db.eventRegistration.findUnique({where:{guestAccessHash:actor.guestAccessHash},include:{event:true}});if(registration){if(registration.status!=='OBSERVED'||['CANCELLED','FINISHED','CLOSED'].includes(registration.event.status))fail('La inscripción no admite otro comprobante');}else await open(eventId);if(await db.storedFile.count({where:{guestAccessHash:actor.guestAccessHash,deletedAt:null}})>=10)fail('Se alcanzó el límite de comprobantes','UPLOAD_LIMIT',429);return files.upload(actor,{...input,visibility:'private'});},
@@ -36,7 +44,7 @@ export function createGuestRegistrations({ database: db, commerce, categoryRegis
    else {await audit(tx,r,null,'PENDING_REVIEW');await tx.database.eventRegistration.update({where:{id:r.id},data:{status:'PENDING_REVIEW',version:{increment:1}}});}
    return {id:r.id,status:'PENDING_REVIEW'};
   });},
-  async get(token){const {r}=await own(token);const payments=await db.manualPayment.findMany({where:{operationId:r.id},orderBy:{createdAt:'desc'},select:{id:true,status:true,createdAt:true,proofFileId:true,rejectionReason:true}});return {id:r.id,status:r.status,version:r.version,reviewNote:r.reviewNote,participantSnapshot:r.participantSnapshot,categorySnapshot:r.categorySnapshot,amountCents:r.amountCents,currency:r.currency,paymentInstructionsSnapshot:r.paymentInstructionsSnapshot,event:{title:r.event.title,publicSlug:r.event.publicSlug,startsAt:r.event.startsAt,venue:r.event.venue},payments};},
+  async get(token){const {r}=await own(token);const payments=await db.manualPayment.findMany({where:{operationId:r.id},orderBy:{createdAt:'desc'},select:{id:true,status:true,createdAt:true,proofFileId:true,rejectionReason:true}});return {id:r.id,registrationCode:r.registrationCode,competitorNumber:r.competitorNumber,status:r.status,version:r.version,reviewNote:r.reviewNote,participantSnapshot:r.participantSnapshot,categorySnapshot:r.categorySnapshot,amountCents:r.amountCents,currency:r.currency,paymentInstructionsSnapshot:r.paymentInstructionsSnapshot,event:{title:r.event.title,publicSlug:r.event.publicSlug,publicOrganizerPhone:r.event.publicOrganizerPhone,startsAt:r.event.startsAt,venue:r.event.venue},payments};},
   async proof(token,paymentId){const {r}=await own(token);const p=await db.manualPayment.findFirst({where:{id:z.uuid().parse(paymentId),operationId:r.id}});if(!p?.proofFileId)fail('Comprobante no disponible','NOT_FOUND',404);return sendContent(p.proofFileId);},
   async qr(token){const {r}=await own(token);if(!r.paymentInstructionsSnapshot?.qrFileId)fail('QR no disponible','NOT_FOUND',404);return sendContent(r.paymentInstructionsSnapshot.qrFileId);},
   async resubmit(token,raw){const {actor,r:initial}=await own(token);const input=correctionInput.extend({participant:person}).parse(raw);return commerce.run(initial.id,async tx=>{

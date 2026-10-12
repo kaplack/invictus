@@ -6,6 +6,8 @@ export function createGuestRegistrationRouter({service,categoryRegistrations}){
  const r=express.Router();const token=req=>req.get('x-registration-token')||req.query.token;
  const writes=rateLimit({windowMs:3600000,limit:60,standardHeaders:true,legacyHeaders:false});
  const reads=rateLimit({windowMs:60000,limit:120,standardHeaders:true,legacyHeaders:false});
+ const lookups=rateLimit({windowMs:60000,limit:15,standardHeaders:true,legacyHeaders:false,message:{error:{message:'Demasiados intentos. Espera un minuto y vuelve a consultar.'}}});
+ r.post('/registration-status',lookups,async(req,res)=>{res.set('Cache-Control','no-store');res.json(await service.lookup(req.body?.code));});
  r.get('/events/:id/guest-registration-options',reads,async(req,res)=>res.json(await service.options(req.params.id)));
  r.post('/events/:id/guest-registration-token',writes,async(req,res)=>res.status(201).json(await service.start(req.params.id)));
  r.post('/events/:id/guest-registrations',writes,async(req,res)=>res.status(201).json(await service.enroll(token(req),req.params.id,req.body)));

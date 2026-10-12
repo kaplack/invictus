@@ -1,3 +1,4 @@
+import CompetitorNumber,{formatCompetitorNumber} from './CompetitorNumber.jsx';
 import {classificationLabel} from '../helpers/registration-classification.js';
 import { userLabel } from '../helpers/user.js';
 import React, { useEffect, useState } from 'react';
@@ -23,6 +24,7 @@ export default function EventRegistrations({ event, close, embedded = false }) {
       {r.error&&<div role="alert"><p>{r.error}</p><button type="button" className="secondary" onClick={r.reload}>Reintentar</button></div>}
       <div className="registration-results" aria-busy={r.loading} inert={r.loading||!!r.error}>
       <Records items={data.items} mobileContent={i=><CompactParticipant item={i}/>} columns={[
+        { label: 'N.º competidor', render: i => i.competitorNumber?formatCompetitorNumber(i.competitorNumber):'—' },
         { label: 'Team', render: i => i.participantSnapshot?.teamName || 'Independiente' },
         { label: 'Participante', render: i => <>{userLabel(i.participantSnapshot || i.user)}<p>{i.participantSnapshot?.phone || i.user?.email || ''}</p></> },
         { label: 'Categoría', render: i => <>{classificationLabel(i.categorySnapshot)}{i.categorySnapshot?.classificationWarning&&<p className="callout">{i.categorySnapshot.classificationWarning}</p>}</> },
@@ -48,7 +50,7 @@ function CompactParticipant({item:i}) {
  const destination=/^9\d{8}$/.test(digits)?`51${digits}`:/^519\d{8}$/.test(digits)?digits:/^\+\d[\d\s()-]+$/.test(phone)&&digits.length>=8&&digits.length<=15?digits:null;
  return <div className="compact-participant">
   <div className="compact-participant-heading"><strong>{userLabel(i.participantSnapshot||i.user)}</strong><RegistrationStatus status={i.status}/></div>
-  <p className="compact-participant-category">{classificationLabel(i.categorySnapshot)}</p>
+  <CompetitorNumber number={i.competitorNumber} compact/><p className="compact-participant-category">{classificationLabel(i.categorySnapshot)}</p>
   {i.categorySnapshot?.classificationWarning&&<p className="callout">{i.categorySnapshot.classificationWarning}</p>}
   {destination?<a className="compact-participant-contact" href={`https://wa.me/${destination}`} target="_blank" rel="noopener noreferrer" aria-label={`Escribir por WhatsApp al ${phone}`} title="Escribir por WhatsApp"><OutlineIcon name="whatsapp"/><span>{phone}</span></a>:phone?<p className="compact-participant-phone">{phone}</p>:i.participantSnapshot?.email||i.user?.email?<p className="compact-participant-phone">{i.participantSnapshot?.email||i.user.email}</p>:null}
  </div>;
@@ -88,7 +90,7 @@ function RegistrationFilters({categories,filters,apply,embedded}) {
  </>;
  return <>
   <form className={embedded?'form participants-toolbar':'form'} onSubmit={e=>{e.preventDefault();apply(window.matchMedia('(max-width:850px)').matches&&embedded?{...filters,q:search.trim()}:values());}}>
-   <label className="participants-search">Buscar participante o correo<span><input name="q" value={search} onChange={e=>setSearch(e.target.value)} maxLength={120}/><button type="submit" className="secondary" aria-label="Buscar participantes"><OutlineIcon name="search"/></button></span></label>
+   <label className="participants-search">Buscar nombre, correo o número<span><input name="q" value={search} onChange={e=>setSearch(e.target.value)} maxLength={120}/><button type="submit" className="secondary" aria-label="Buscar participantes"><OutlineIcon name="search"/></button></span></label>
    <div className="participants-desktop-filters">{selectors}<button className="secondary" type="submit"><OutlineIcon name="filter"/>Aplicar filtros</button></div>
    {embedded&&<button type="button" className="secondary participants-filter-toggle" aria-label={count?'Filtros, '+count+' activos':'Filtros'} aria-haspopup="dialog" aria-expanded={open} onClick={()=>{setDraft(filters);setOpen(true);}}><OutlineIcon name="filter"/>{count>0&&<span>{count}</span>}</button>}
   </form>

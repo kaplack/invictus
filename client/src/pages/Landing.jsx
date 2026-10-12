@@ -1,3 +1,4 @@
+import RegistrationLookup from '../components/RegistrationLookup.jsx';
 import React,{useState} from 'react';
 import {useData} from '../hooks/data.js';
 import {State} from '../components/UI.jsx';
@@ -45,7 +46,7 @@ export default function Landing(){
     <div className="events-home-actions"><a className="button" href="#proximos-eventos">Explorar eventos <span aria-hidden="true">↓</span></a><a className="button secondary" href="/mis-eventos?crear=1">Crear evento <span aria-hidden="true">↗</span></a></div>
    </div>
   </section>
-  <section id="proximos-eventos" className="public-events events-home-list" aria-labelledby="home-events-title">
+  <RegistrationLookup/><section id="proximos-eventos" className="public-events events-home-list" aria-labelledby="home-events-title">
    <div className="events-home-list-heading"><h2 id="home-events-title">Próximos eventos</h2><label className="events-home-search"><span className="sr-only">Buscar eventos</span><input type="search" placeholder="Busca un evento, lugar o disciplina" value={query} onChange={e=>setQuery(e.target.value)} maxLength={120}/></label></div>
    <State resource={events}>{items=>{const found=items.filter(event=>!term || searchable([event.title,event.venue,event.discipline?.name,event.publicOrganizerName,event.team?.name].filter(Boolean).join(' ')).includes(term));return <>
     {term&&<p role="status" className="events-home-results">{found.length} {found.length===1?'evento encontrado':'eventos encontrados'}</p>}

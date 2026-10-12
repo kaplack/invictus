@@ -1,3 +1,5 @@
+import OrganizerWhatsApp from './OrganizerWhatsApp.jsx';
+import {whatsappDestination} from '../helpers/whatsapp.js';
 import {eventOrganizerName} from '../helpers/event-organizer.js';
 import {EventRulesLink} from './EventRules.jsx';
 import React,{useState,useEffect} from 'react';
@@ -33,7 +35,7 @@ export function EventDetail({event,user}) {
   setEnrolling(true);
  }
  const registrationLabel=registration?({CONFIRMED:'Ya estás inscrito',COMPLETED:'Inscripción finalizada',OBSERVED:'Inscripción observada',REJECTED:'Inscripción rechazada',CANCELLED:'Inscripción cancelada'}[registration.status]||'Inscripción pendiente'):null;
- const registerButton=(withIcon=false)=>informational?<a className="button event-register" href={event.externalUrl} target="_blank" rel="noopener noreferrer">Ir al sitio del organizador ↗</a>:registration?<a className="button event-register event-register-existing" href="/inscripciones" title="Consultar en Mis inscripciones">{registrationLabel}</a>:<button className="event-register" disabled={past||action.busy||checking||!!registrationError} onClick={register}>{withIcon&&<OutlineIcon name="edit"/>}{checking?'Consultando inscripción…':past?'Inscripciones cerradas':registrationError?'Inscripción no disponible':'Inscribirme'}</button>;
+ const registerButton=()=>informational?<a className="button event-register" href={event.externalUrl} target="_blank" rel="noopener noreferrer">Ir al sitio del organizador ↗</a>:registration?<a className="button event-register event-register-existing" href="/inscripciones" title="Consultar en Mis inscripciones">{registrationLabel}</a>:<button className="event-register" disabled={past||action.busy||checking||!!registrationError} onClick={register}>{!past&&!checking&&!registrationError&&<OutlineIcon name="ticket" width="16" height="16"/>}{checking?'Consultando inscripción…':past?'Inscripciones cerradas':registrationError?'Inscripción no disponible':'Inscribirme'}</button>;
  return <article className="event-detail">
   <div className="event-detail-hero-shell"><a className="events-back event-detail-back" href="/">← Explorar eventos</a>
   <header className="event-detail-hero">
@@ -43,7 +45,7 @@ export function EventDetail({event,user}) {
     
    </div>
   </header>
-  <div className="event-detail-actions">{registerButton(true)}<button type="button" className="secondary event-detail-share-button" aria-label="Compartir evento" title="Compartir evento" onClick={()=>setSharing(true)}><OutlineIcon name="share"/></button></div></div>
+  <div className="event-detail-actions">{registerButton()}<button type="button" className="secondary event-detail-share-button" aria-label="Compartir evento" title="Compartir evento" onClick={()=>setSharing(true)}><OutlineIcon name="share"/></button></div></div>
   <div className="event-detail-layout"><div className="event-detail-main">
    <Feedback state={action}/>
    {!informational&&event.rulesFileId&&<EventRulesLink fileId={event.rulesFileId}/>}
@@ -63,7 +65,7 @@ export function EventDetail({event,user}) {
    {Array.isArray(event.galleryFileIds)&&event.galleryFileIds.length>0&&<section className="event-detail-panel"><h2><OutlineIcon name="camera"/>Galería</h2><div className="event-detail-gallery">{event.galleryFileIds.map(id=><a key={id} href={fileUrl(id)} target="_blank" rel="noopener noreferrer" aria-label="Ampliar imagen del evento"><img loading="lazy" src={fileUrl(id)} alt="Imagen del evento"/></a>)}</div></section>}
    {organizer&&<section className="event-detail-panel"><h2><OutlineIcon name="users"/>Organizador</h2><p>{organizer}</p>{informational&&event.publicOrganizerPhone&&<p>Teléfono: <a href={'tel:'+event.publicOrganizerPhone.replace(/[^+\d]/g,'')}>{event.publicOrganizerPhone}</a></p>}{informational&&event.publicOrganizerEmail&&<p>Correo electrónico: <a href={'mailto:'+event.publicOrganizerEmail}>{event.publicOrganizerEmail}</a></p>}</section>}
   </div>
-  <aside className="event-detail-summary" aria-label="Inscripción al evento"><div className="event-detail-price">{price?<><small>{price.label||'Inscripción'}</small><strong>{price.value}</strong></>:<strong>Evento informativo</strong>}</div>{registerButton()}<button type="button" className="secondary event-detail-share-button event-detail-mobile-share" aria-label="Compartir evento" title="Compartir evento" onClick={()=>setSharing(true)}><OutlineIcon name="share"/></button><div className="event-detail-summary-extra"><p>{eventDate(event)}</p><p>{event.venue}</p><button className="secondary" onClick={()=>setSharing(true)}>Compartir ↗</button></div></aside></div>
+  <aside className={"event-detail-summary"+(whatsappDestination(event.publicOrganizerPhone)?" has-organizer-contact":"")} aria-label="Inscripción al evento"><div className="event-detail-price">{price?<><small>{price.label||'Inscripción'}</small><strong>{price.value}</strong></>:<strong>Evento informativo</strong>}</div>{registerButton()}<OrganizerWhatsApp event={event} className="event-detail-contact" label="Consultar al organizador"/><button type="button" className="secondary event-detail-share-button event-detail-mobile-share" aria-label="Compartir evento" title="Compartir evento" onClick={()=>setSharing(true)}><OutlineIcon name="share"/></button><div className="event-detail-summary-extra"><p>{eventDate(event)}</p><p>{event.venue}</p><button className="secondary" onClick={()=>setSharing(true)}>Compartir ↗</button></div></aside></div>
   {sharing&&<Modal title="Compartir evento" className="event-share-modal" onClose={()=>setSharing(false)}><div className="event-share">
    <p className="event-share-title">{event.title}</p>
    <label>Enlace del evento<input readOnly value={shareUrl} onFocus={e=>e.target.select()}/></label>

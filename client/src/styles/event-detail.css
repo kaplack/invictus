@@ -101,3 +101,18 @@
 .public-events .event-share-whatsapp .event-icon-button{background:var(--landing-gold);border-color:var(--landing-gold);color:var(--landing-bg)}
 .public-events .event-share-whatsapp .event-icon-button:hover,.public-events .event-share-whatsapp .event-icon-button:focus-visible{background:var(--landing-gold-hover);color:var(--landing-bg)}
 .event-share-actions .event-action-tooltip{border-color:var(--landing-line)}
+/* Contact stays beside Share in the fixed mobile bar, below enrollment on desktop. */
+.public-events .event-detail .event-detail-contact{background:transparent;color:var(--landing-text);border:1px solid var(--landing-line);border-radius:8px;min-height:44px}
+.public-events .event-detail .event-detail-contact:hover{background:var(--landing-bg);border-color:var(--landing-gold)}
+.event-detail-contact svg{width:20px;height:20px}
+@media(max-width:899px){
+ .event-detail-summary{display:grid;grid-template-columns:minmax(0,1fr) auto 44px;gap:6px;padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+ .event-detail-summary.has-organizer-contact{grid-template-columns:minmax(0,1fr) auto 44px 44px}
+ .event-detail-summary .event-detail-price{gap:2px}.event-detail-summary .event-detail-price small{font-size:10px}.event-detail-summary .event-detail-price strong{font-size:17px;line-height:1.2;letter-spacing:-.3px}
+ .public-events .event-detail-summary .event-register{font-size:13px;padding:8px 12px;max-width:140px;min-height:44px;line-height:1.25;overflow-wrap:anywhere}
+ .event-detail-summary .event-detail-contact,.event-detail-summary .event-detail-mobile-share{display:flex;justify-content:center;align-items:center;width:44px;height:44px;min-width:44px;min-height:44px;padding:10px}
+ .event-detail-contact span{display:none}
+}
+@media(min-width:900px){.event-detail-summary .event-detail-contact{width:100%;font-size:13px;padding:10px 12px}}
+.public-events .event-detail .event-register{gap:6px}.event-detail .event-register svg{width:16px;height:16px}
+.event-detail-hero-shell>.event-detail-actions>.event-register{gap:6px}
