@@ -47,3 +47,98 @@
 .event-participants .error{background:#361c24;color:#ffc1b6;border:1px solid #7e424b}
 .event-participants nav{justify-content:center;margin-top:24px}
 @media(max-width:850px){.event-participants .form-grid{grid-template-columns:1fr}.event-participants nav{gap:8px}.event-participants nav span{font-size:13px}}
+.participants-desktop-filters{flex-wrap:wrap}
+@media(max-width:850px){
+ .participants-filter-sheet .app-modal{overflow:hidden;padding:20px 5vw 0;max-height:90dvh}
+ .participants-filter-sheet .app-modal[open]{display:flex;flex-direction:column}
+ .participants-filter-sheet .app-modal-header{flex-shrink:0}
+ .participants-filter-sheet .form{display:flex;flex-direction:column;gap:0;min-height:0;margin:0;overflow:hidden}
+ .participants-filter-body{display:grid;gap:20px;overflow-y:auto;min-height:0;padding:12px 3px 20px;overscroll-behavior:contain}
+ .participants-filter-sheet .participants-filter-actions{flex-shrink:0;margin:0;padding:16px 0 calc(16px + env(safe-area-inset-bottom));border-top:1px solid var(--landing-line);background:var(--landing-surface);gap:10px}
+ .participants-filter-actions>button{min-height:48px;white-space:normal;font-size:14px}
+}
+
+.event-participants .participants-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) auto}
+.event-participants .participants-desktop-filters{flex-wrap:nowrap;gap:12px}
+.event-participants .participants-desktop-filters label{min-width:120px}
+.participants-active-filters{color:var(--landing-muted);font-size:13px;margin:12px 0}
+.registration-payment-chip{position:relative;display:flex;align-items:center;gap:4px}
+.registration-summary .registration-payment-info{display:inline-flex;align-items:center;justify-content:center;width:36px;min-height:40px;padding:6px;border:0;background:transparent}
+.registration-payment-info svg{width:18px;height:18px}
+.registration-payment-help{position:absolute;top:calc(100% + 8px);left:0;z-index:10;width:min(330px,calc(100vw - 80px));padding:14px;border:1px solid var(--landing-line,var(--line));border-radius:8px;background:var(--landing-surface,var(--paper));color:var(--landing-text,var(--black));font-size:13px;line-height:1.6;box-shadow:0 8px 24px #0004}
+.registration-payment-info:hover+.registration-payment-help,.registration-payment-info:focus-visible+.registration-payment-help{display:block}
+@media(max-width:850px){
+ .event-participants .participants-toolbar{grid-template-columns:minmax(0,1fr) auto}
+ .event-participants .participants-desktop-filters{display:none}
+}
+@media(max-width:600px){
+ .registration-state-chip .registration-state-label{display:inline}
+ .registration-summary .registration-state-chip{flex:0 1 auto;padding:8px 12px;gap:8px;font-size:12px}
+ .registration-state-chip .registration-state-icon{display:none}
+ .registration-payment-chip{flex-basis:100%}
+ .registration-summary .registration-payment-info{min-width:44px;min-height:44px}
+ .registration-state-chips{gap:8px}
+}
+.registration-payment-help{pointer-events:none}
+@media(max-width:600px){
+ .registration-payment-chip{flex-wrap:wrap}
+ .registration-payment-help{position:static;flex-basis:100%;width:100%;margin-top:6px}
+}
+
+.registration-status-options{display:contents}
+@media(max-width:600px){
+ .registration-state-chips{display:block}
+ .registration-payment-chip{margin-bottom:8px}
+ .registration-status-options{display:flex;flex-wrap:nowrap;gap:8px;max-width:100%;overflow-x:auto;padding:3px 2px 8px;scrollbar-width:thin;scrollbar-color:var(--landing-line) transparent;overscroll-behavior-x:contain}
+ .registration-status-options .registration-state-chip{flex:0 0 auto;white-space:nowrap}
+ .registration-status-options::-webkit-scrollbar{height:4px}
+ .registration-status-options::-webkit-scrollbar-thumb{background:var(--landing-line);border-radius:4px}
+ .registration-active-state{margin-top:4px}
+}
+@media(max-width:600px){
+ .registration-status-options .registration-state-chip[data-status=""]{display:none}
+}
+.event-participants .registrations-panel{border:0;background:transparent;border-radius:0;padding:0}
+
+.event-participants .registration-capacity-block{background:var(--landing-surface);border-radius:12px;padding:18px 20px;margin-bottom:24px}
+.registration-capacity-block .registration-capacity-heading{margin:0 0 12px}
+.event-participants .registration-state-chips{margin:0 0 8px}
+.event-participants .participants-toolbar{margin-top:18px}
+.event-participants .registration-results-heading{border-top:1px solid var(--landing-line);padding-top:20px;margin:24px 0 18px;font-size:14px;color:var(--landing-muted)}
+@media(max-width:600px){
+ .event-participants .registration-capacity-block{padding:18px 16px;margin-bottom:20px}
+ .registration-capacity-block .registration-capacity-heading{margin:0 0 12px;line-height:1.5}
+ .registration-summary .registration-payment-info{flex:0 0 44px;width:44px}
+ .registration-payment-chip{justify-content:flex-start;gap:0;align-content:start}
+ .registration-payment-chip>.registration-state-chip{flex:none}
+ .event-participants .registration-results-heading{padding-top:16px;margin-top:20px;margin-bottom:16px}
+}
+
+.participants-payment-option{display:inline-flex;align-items:center;justify-content:flex-start;gap:10px;min-height:48px}
+.participants-payment-option[aria-pressed=true]{border-color:var(--landing-gold)!important;color:var(--landing-gold)!important}
+@media(max-width:600px){
+ .event-participants .registration-state-chips{display:flex;align-items:center;flex-wrap:nowrap;gap:10px;position:relative}
+ .registration-payment-chip{flex:0 0 auto;flex-basis:auto;flex-wrap:nowrap;margin:0;position:static}
+ .registration-status-options{display:contents}
+ .registration-summary .registration-state-chip{min-height:44px;min-width:64px;justify-content:center;padding:8px 12px}
+ .registration-state-chips .registration-state-label{display:none}
+ .registration-state-chips .registration-state-icon{display:block}
+ .registration-status-options .registration-state-chip:not([data-status="PENDING_REVIEW"]):not([data-status="OBSERVED"]):not([data-status="CONFIRMED"]){display:none}
+ .registration-summary .registration-payment-info{min-width:36px;flex-basis:36px;width:36px}
+ .registration-payment-help{position:absolute;top:calc(100% + 8px);left:0;width:100%;margin:0}
+}
+
+@media(max-width:600px){
+ .event-participants .registration-state-chips{gap:6px}
+ .registration-summary .registration-state-chip{min-width:56px;min-height:44px;padding:8px 9px;gap:6px}
+ .registration-state-chips .registration-state-chip svg{width:18px;height:18px}
+ .registration-summary .registration-payment-info{min-width:32px;width:32px;flex-basis:32px;padding:5px}
+}
+@media(min-width:361px) and (max-width:600px){
+ .registration-summary .registration-state-chip{min-width:70px;padding-inline:12px}
+}
+@media(max-width:360px){
+ .registration-summary .registration-state-chip{min-width:56px;padding-inline:6px;gap:4px}
+ .registration-state-chips .registration-state-chip svg{width:16px;height:16px}
+ .registration-state-chips .registration-state-count{min-width:14px}
+}

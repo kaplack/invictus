@@ -112,23 +112,36 @@ export function createCategoryRegistrations({ database: db, commerce, registrati
     async list(user, eventId, query) {
       uuid.parse(eventId);
       const input = z.object({ q: z.string().trim().max(120).default(''), categoryId: z.uuid().optional(),
+        paymentPending: z.enum(['true']).optional(), gender: z.enum(['MALE','FEMALE']).optional(), modality: z.string().trim().min(1).max(100).optional(),
+        registrationState: z.enum(['PENDING_REVIEW','OBSERVED','CONFIRMED','REJECTED','PENDING','CANCELLED']).optional(),
         status: z.enum(['PENDING_REVIEW','OBSERVED','CONFIRMED','REJECTED','PENDING','CANCELLED','COMPLETED']).optional(), offset: z.coerce.number().int().min(0).max(1000000).default(0) }).strict().parse(query);
       const event = await db.event.findUnique({ where: { id: eventId } });
       if (!event) fail('Evento no disponible', 'NOT_FOUND', 404);
       await requireEventManager(db, user, event);
-      const where = { eventId, ...(input.status ? { status: input.status } : {}), ...(input.categoryId ? { categoryId: input.categoryId } : {}),
-        ...(input.q ? { OR: [...(/^\d+$/.test(input.q)&&Number(input.q)<=2147483647?[{competitorNumber:Number(input.q)}]:[]),{registrationCode:{contains:input.q,mode:'insensitive'}},{ user: { OR: [...['username','email'].map(key=>({[key]:{contains:input.q,mode:'insensitive'}})),{AND:[{profileUserRows:{none:{}}},{OR:['name','lastName'].map(key=>({[key]:{contains:input.q,mode:'insensitive'}}))}]}] } }, {user:{profileUserRows:{some:{OR:['name','lastName'].map(key=>({[key]:{contains:input.q,mode:'insensitive'}}))}}}}, ...['name','lastName','phone'].map(key=>({participantSnapshot:{path:[key],string_contains:input.q}}))] } : {}) };
+      const payable = await db.eventRegistration.findMany({where:{eventId,amountCents:{gt:0}},select:{id:true}});
+      const verified = payable.length ? await db.manualPayment.findMany({where:{operationId:{in:payable.map(r=>r.id)},status:'verified'},select:{operationId:true}}) : [];
+      const paidIds=new Set(verified.map(p=>p.operationId));
+      const pendingPaymentIds=payable.filter(r=>!paidIds.has(r.id)).map(r=>r.id);
+      const selectedState=input.registrationState||input.status;
+      const where = { eventId,
+        ...(input.paymentPending?{id:{in:pendingPaymentIds}}:{}),
+        ...(input.gender||input.modality?{AND:[
+          ...(input.gender?[{participantSnapshot:{path:['gender'],equals:input.gender}}]:[]),
+          ...(input.modality?[{OR:[{categorySnapshot:{path:['classification','modality'],equals:input.modality}},{categorySnapshot:{path:['modality'],equals:input.modality}}]}]:[]),
+        ]}:{}), ...(selectedState ? { status: input.registrationState==='CONFIRMED'?{in:['CONFIRMED','COMPLETED']}:selectedState } : {}), ...(input.categoryId ? { categoryId: input.categoryId } : {}),
+        ...(input.q ? { OR: [...(/^\d+$/.test(input.q)&&Number(input.q)<=2147483647?[{competitorNumber:Number(input.q)}]:[]),{registrationCode:{contains:input.q,mode:'insensitive'}},{ user: { OR: [...['username','email'].map(key=>({[key]:{contains:input.q,mode:'insensitive'}})),{AND:[{profileUserRows:{none:{}}},{OR:['name','lastName'].map(key=>({[key]:{contains:input.q,mode:'insensitive'}}))}]}] } }, {user:{profileUserRows:{some:{OR:['name','lastName'].map(key=>({[key]:{contains:input.q,mode:'insensitive'}}))}}}}, ...['name','lastName','phone'].map(key=>({participantSnapshot:{path:[key],string_contains:input.q,mode:'insensitive'}}))] } : {}) };
       const [items, total, groups, categories, categoryCounts, configuration] = await Promise.all([
         db.eventRegistration.findMany({ where, include: { user: { select: person } }, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }], take: 20, skip: input.offset }),
         db.eventRegistration.count({ where }), db.eventRegistration.groupBy({ by: ['status'], where: { eventId }, _count: true }),
-        db.eventCategory.findMany({ where: { eventId }, select: { id: true, name: true, capacity: true } }),
+        db.eventCategory.findMany({ where: { eventId }, select: { id: true, name: true, capacity: true, gender:true, modalities:true, modality:true } }),
         db.eventRegistration.groupBy({ by: ['categoryId'], where: { eventId, status: { in: reservedStates } }, _count: true }),
         db.eventRegistrationConfig.findUnique({ where: { eventId } }),
       ]);
       const occupied = groups.filter(g => reservedStates.includes(g.status)).reduce((sum,g) => sum + g._count, 0);
       const proofs = items.length ? await db.manualPayment.findMany({ where: { operationId: { in: items.map(i => i.id) }, proofFileId: { not: null } }, select: { id: true, operationId: true }, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }] }) : [];
       return { items:items.map(i => ({ ...withUserIdentity(i), proofPaymentId: proofs.find(p => p.operationId === i.id)?.id || null })), total, nextOffset: input.offset + items.length < total ? input.offset + 20 : null,
-        summary: { statuses: Object.fromEntries(groups.map(g => [g.status,g._count])), occupied, capacity: configuration?.maxCapacity ?? null },
+        filterOptions:{genderEnabled:!!event.competitionConfig?.genderEnabled||categories.some(c=>c.gender),modalities:[...new Set(categories.flatMap(c=>[...(c.modalities||[]).map(m=>m.name),...(c.modality?[c.modality]:[])]))]},
+        summary: { pendingPayment:pendingPaymentIds.length, total:groups.reduce((sum,g)=>sum+g._count,0), statuses: Object.fromEntries(groups.map(g => [g.status,g._count])), occupied, capacity: configuration?.maxCapacity ?? null },
         categories: categories.map(c => ({ ...c, occupied: categoryCounts.find(g => g.categoryId === c.id)?._count || 0 })) };
     },
     async proof(user, id, paymentId) {

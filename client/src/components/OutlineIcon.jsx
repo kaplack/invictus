@@ -1,5 +1,7 @@
 import React from 'react';
 const paths = {
+  dollar: <><path d="M12 2v20m5-15c-1-4-10-4-10 1 0 5 10 3 10 8 0 5-9 5-10 1"/></>,
+  cancelled: <><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></>,
   ticket: <><path d="M3 5h18v5a2 2 0 0 0 0 4v5H3v-5a2 2 0 0 0 0-4V5Z"/><path d="M15 5v3m0 3v2m0 3v3"/></>,
   clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
   alert: <><circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 3v1"/></>,

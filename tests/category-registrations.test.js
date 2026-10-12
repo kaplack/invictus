@@ -70,6 +70,14 @@ test('piloto: una categoría, cupos concurrentes, snapshots, observar/corregir/a
   await send(member.agent,'post',`/registrations/${r.id}/review`,{ version: r.version,decision: 'CONFIRMED' }).expect(403);
   r = (await send(admin.agent,'post',`/registrations/${r.id}/review`,{ version: r.version,decision: 'OBSERVED',note: 'Adjunta comprobante legible' }).expect(200)).body;
   assert.equal(r.status,'OBSERVED');
+  const snapshotParticipant=await db.eventRegistration.findUnique({where:{id:r.id},select:{participantSnapshot:true}});
+  for(const q of [snapshotParticipant.participantSnapshot.name.toLowerCase(),snapshotParticipant.participantSnapshot.name.toUpperCase()]){
+    const matches=(await owner.agent.get(`/api/events/${event.id}/registrations`).query({q}).expect(200)).body;
+    assert.ok(matches.items.some(i=>i.id===r.id));
+  }
+  const observedUnpaid=(await owner.agent.get(`/api/events/${event.id}/registrations?registrationState=OBSERVED&paymentPending=true`).expect(200)).body;
+  assert.deepEqual(observedUnpaid.items.map(i=>i.id),[r.id]);
+  assert.equal(observedUnpaid.summary.pendingPayment,1);
   await send(loser.agent,'post',`/events/${event.id}/register`,{ ...input,proofFileId: loser === a ? proofA : proofB }).expect(409);
   await send(winner.agent,'post',`/registrations/${r.id}/resubmit`,{ version: r.version,participant,proofFileId: winner === a ? proofA : proofB }).expect(409);
   r = (await send(winner.agent,'post',`/registrations/${r.id}/resubmit`,{ version: r.version,participant,proofFileId: await proof(winner) }).expect(200)).body;
@@ -97,10 +105,21 @@ test('piloto: una categoría, cupos concurrentes, snapshots, observar/corregir/a
   assert.equal(tr.status,'REJECTED');
   const cr = (await send(admin.agent,'post',`/events/${event.id}/register`,{ categoryId: cashCategory.id,methodId: cash.id,participant }).expect(201)).body;
   assert.equal(cr.status,'PENDING_REVIEW');
+  const cashUnpaid=(await owner.agent.get(`/api/events/${event.id}/registrations?paymentPending=true`).expect(200)).body;
+  assert.ok(cashUnpaid.items.some(i=>i.id===cr.id));
+  assert.ok(!cashUnpaid.items.some(i=>i.id===r.id||i.id===fr.id));
   await send(owner.agent,'post',`/registrations/${cr.id}/review`,{ version: cr.version,decision: 'CONFIRMED' }).expect(200);
+  const afterCash=(await owner.agent.get(`/api/events/${event.id}/registrations?paymentPending=true`).expect(200)).body;
+  assert.ok(!afterCash.items.some(i=>i.id===cr.id));
   await send(member.agent,'post',`/registrations/${tr.id}/resubmit`,{ version: tr.version,participant,proofFileId: await proof(member) }).expect(409);
   const list = (await owner.agent.get(`/api/events/${event.id}/registrations?status=CONFIRMED`).expect(200)).body;
   assert.ok(list.items.every(i => i.status === 'CONFIRMED')); assert.ok(list.summary.occupied >= 1);
+  const confirmedView = (await owner.agent.get(`/api/events/${event.id}/registrations?registrationState=CONFIRMED`).expect(200)).body;
+  assert.ok(confirmedView.items.every(i => ['CONFIRMED','COMPLETED'].includes(i.status)));
+  assert.equal(confirmedView.total, (confirmedView.summary.statuses.CONFIRMED || 0) + (confirmedView.summary.statuses.COMPLETED || 0));
+  const reviewView = (await owner.agent.get(`/api/events/${event.id}/registrations?registrationState=PENDING_REVIEW`).expect(200)).body;
+  assert.ok(reviewView.items.every(i => i.status === 'PENDING_REVIEW'));
+  await owner.agent.get(`/api/events/${event.id}/registrations?registrationState=INVALID`).expect(400);
   const history = (await loser.agent.get('/api/profile/registrations').expect(200)).body.find(x => x.id === fr.id);
   assert.equal(history.categorySnapshot.name,'Libre');
 });

@@ -10,7 +10,7 @@ import { categoryPrice, paymentTypes } from './EventSetup.jsx';
 import { api, upload, base } from '../services/api.js';
 import { useData, useAction } from '../hooks/data.js';
 
-const labels = { PENDING: 'Pendiente', PENDING_REVIEW: 'Pendiente de revisión del organizador', OBSERVED: 'Observada: requiere corrección', CONFIRMED: 'Aceptada', REJECTED: 'Rechazada', CANCELLED: 'Cancelada', COMPLETED: 'Finalizada' };
+const labels = { PENDING: 'Pendiente de pago', PENDING_REVIEW: 'Por revisar', OBSERVED: 'Observada', CONFIRMED: 'Confirmada', REJECTED: 'Rechazada', CANCELLED: 'Cancelada', COMPLETED: 'Confirmada' };
 export const RegistrationStatus = ({ status }) => <Status value={status} label={labels[status]}/>;
 const amount = r => categoryPrice({ priceCents: r.amountCents || 0, currency: r.currency || 'PEN' });
 

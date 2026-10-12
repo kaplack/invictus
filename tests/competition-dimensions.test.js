@@ -41,6 +41,11 @@ test('Distancias, modalidad, clasificación, precio fijo, cupo total y observaci
  for(const category of [short,long]){const t=await tokenFor(event);const payload={categoryId:category.id,modality:'Elite',methodId:method.id,proofFileId:await guestProof(t,event),participant:person};const r=(await guest(t,'post','/events/'+event.id+'/guest-registrations',payload).expect(201)).body;assert.equal((await guest(t,'get','/guest-registration').expect(200)).body.amountCents,category.priceCents);}
  const full=await tokenFor(event);await guest(full,'post','/events/'+event.id+'/guest-registrations',{categoryId:short.id,modality:'Elite',methodId:method.id,proofFileId:await guestProof(full,event),participant:person}).expect(409);
  assert.equal(await db.eventRegistration.count({where:{eventId:event.id}}),4);
+ const filtered=(await send(owner,'get',`/events/${event.id}/registrations?gender=MALE&modality=Elite&categoryId=${short.id}&paymentPending=true`).expect(200)).body;
+ assert.equal(filtered.total,2);assert.ok(filtered.items.every(r=>r.categoryId===short.id&&r.participantSnapshot.gender==='MALE'&&r.categorySnapshot.classification.modality==='Elite'));
+ assert.equal(filtered.filterOptions.genderEnabled,true);assert.deepEqual(filtered.filterOptions.modalities.sort(),['Elite','Pro']);
+ const noMatches=(await send(owner,'get',`/events/${event.id}/registrations?gender=FEMALE&modality=Elite`).expect(200)).body;assert.equal(noMatches.total,0);
+ await send(owner,'get',`/events/${event.id}/registrations?gender=INVALID`).expect(400);
 });
 test('Sin divisiones ni distancias: nacimiento privado, revisión y compatibilidad',async()=>{
  const owner=await account(),athlete=await account();const event=await eventFor(owner,{genderEnabled:false,ageGroupsEnabled:false,ageGroups:[]});await send(owner,'post','/events/mine/'+event.id+'/publish').expect(200);
