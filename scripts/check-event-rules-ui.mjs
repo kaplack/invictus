@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 const browser=await chromium.launch({channel:'msedge',headless:true});
 const id='12345678-1234-4234-8234-123456789012';
 let locked=false;
+let rulesFileId=id;
 try {
  const page=await browser.newPage();
  await page.route('**/api/**',async route=>{
   const path=new URL(route.request().url()).pathname;
-  const event={id,title:'Competencia de prueba',description:'Descripción',status:'DRAFT',mode:'MANAGED',startsAt:'2027-01-01T12:00:00Z',rulesFileId:id,venue:'Lima',competitionConfig:null,lifecycle:{conditionsLocked:locked},configuration:{maxCapacity:50}};
+  const event={id,title:'Competencia de prueba',description:'Descripción',status:'DRAFT',mode:'MANAGED',startsAt:'2027-01-01T12:00:00Z',rulesFileId,venue:'Lima',competitionConfig:null,lifecycle:{conditionsLocked:locked},configuration:{maxCapacity:50}};
   const json=path.endsWith('/auth/session')?{user:{id:'u1',role:'USER',name:'Organizador'}}:path.endsWith('/my-registration')?null:path.endsWith('/setup')?{categories:[],methods:[],methodIds:[],hasRegistrations:locked,editable:!locked}:path==='/api/disciplines'?[]:path.startsWith('/api/files/')?{file:{name:'Bases de la competencia.pdf'}}:event;
   await route.fulfill({json});
  });
@@ -26,6 +27,10 @@ try {
  locked=true;await page.reload();
  await expect(page.locator('.event-rules')).toContainText('No puedes modificar las bases porque el evento ya tiene inscritos.');
  await expect(page.locator('.event-rules button')).toHaveCount(0);
+ rulesFileId=null;await page.reload();
+ await expect(page.locator('.event-rules').getByRole('button',{name:'Adjuntar PDF'})).toBeVisible();
+ await expect(page.locator('.event-rules')).not.toContainText('Obligatorio');
+ rulesFileId=id;
  await page.setViewportSize({width:390,height:900});
  await page.goto('http://localhost:5173/eventos/competencia');
  await expect(page.getByRole('link',{name:'Ver bases PDF'})).toBeVisible();

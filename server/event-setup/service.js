@@ -31,7 +31,6 @@ export function assertEventLogisticsReady(event) {
 }
 export async function assertEventSetupReady(tx, event) {
  assertEventLogisticsReady(event);
- if(event.mode!=="INFORMATIONAL"&&!event.rulesFileId)throw new AppError("Adjunta las bases en PDF antes de publicar",409,"RULES_REQUIRED");
   const categories = await tx.eventCategory.findMany({ where: { eventId: event.id } });
   if (!categories.length) return; // Historical free enrollment is unchanged.
   const active = categories.filter(c => c.active);

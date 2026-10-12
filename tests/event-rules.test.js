@@ -7,9 +7,9 @@ import {createEventService} from '../vendor/gestion-eventos/src/service.js';
 const id='12345678-1234-4234-8234-123456789012';
 const pdf='12345678-1234-4234-8234-123456789013';
 const event={id,organizerId:id,title:'Competencia',description:'Descripción',timeZone:'America/Lima',startsAt:'2027-01-01T12:00:00Z',status:'DRAFT',mode:'MANAGED',competitionConfig:null,rulesFileId:pdf};
-test('bases: publicación requiere PDF, informativos exentos',async()=>{
+test('bases: publicación admite eventos con y sin PDF',async()=>{
  const db={eventCategory:{findMany:async()=>[]}};
- await assert.rejects(assertEventSetupReady(db,{...event,rulesFileId:null}),{code:'RULES_REQUIRED'});
+ await assertEventSetupReady(db,{...event,rulesFileId:null});
  await assertEventSetupReady(db,event);
  await assertEventSetupReady(db,{...event,mode:'INFORMATIONAL',rulesFileId:null});
 });
@@ -26,5 +26,6 @@ test('bases: servidor bloquea reemplazo y eliminación con inscritos',async()=>{
  const db={eventRegistration:{count:async({where})=>{assert.equal(where.eventId,id);return count;}}};
  for(const rulesFileId of [null,id])await assert.rejects(assertRulesChangeAllowed(db,event,{...event,rulesFileId}),{code:'RULES_LOCKED'});
  await assertRulesChangeAllowed(db,event,event);
+ await assertRulesChangeAllowed(db,{...event,rulesFileId:null},{...event,rulesFileId:pdf});
  count=0;await assertRulesChangeAllowed(db,event,{...event,rulesFileId:id});
 });

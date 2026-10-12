@@ -26,7 +26,6 @@ export function composeServices({database:db,Prisma,files,config}) {
   store.events.update=async(id,event)=>{
    const previous=await database.event.findUnique({where:{id}});
    await assertRulesChangeAllowed(database,previous,event);
-   if(previous.mode!=="INFORMATIONAL"&&event.status==="PUBLISHED"&&!event.rulesFileId&&(previous.status!=="PUBLISHED"||previous.rulesFileId))throw new AppError("Adjunta las bases en PDF antes de publicar",409,"RULES_REQUIRED");
    if(!isDeepStrictEqual(previous.competitionConfig,event.competitionConfig)&&(!setupEditable(previous)||await database.eventRegistration.count({where:{eventId:id}})))throw new AppError('Las divisiones solo se cambian en un borrador sin inscripciones',409,'CONFIG_IN_USE');
    return update(id,event);
   };
