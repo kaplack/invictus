@@ -37,3 +37,11 @@ La identidad Profile/User fue adaptada después (ver profile-identity.md). Cierr
 ## Ajuste de navegación 2026-10-03
 
 El Home es el catálogo único; /eventos redirige en cliente a /. Se eliminó Ver todos, el buscador pasó al listado y Mis eventos queda únicamente en el menú de cuenta. URLs limpias y continuidad de creación documentadas en public-navigation.md.
+
+## Prioridad por organizador
+
+En Mis eventos, Mostrar primero entre mis eventos aparece para eventos publicados y futuros cuando el organizador tiene al menos dos. POST /api/events/mine/:id/priority recibe {enabled: boolean}; solo el propietario puede cambiar su preferencia. users.preferred_event_id guarda una sola selección y serializa cambios concurrentes mediante bloqueo del usuario. Al despublicar se borra la selección. Con un único evento próximo se oculta el control y se conserva la preferencia.
+
+El listado público se ordena por inicio, creación e ID. Dentro de las posiciones de cada organizador se coloca su evento elegido primero y se conserva el orden relativo del resto; las posiciones de otros organizadores no cambian. Se aplica al conjunto de hasta 100 eventos retornado por el listado. La portada excluye eventos pasados; el catálogo conserva publicados históricos.
+
+Requiere aplicar la migración 20261013180000_organizer_event_priority y regenerar Prisma antes de arrancar el servidor. Verificación: node --test tests/event-priority.test.js y npm run build:web.

@@ -1,4 +1,5 @@
 import {withEventOrganizer,teamLabel} from './profile/event-organizer.js';
+import {prioritizeOrganizerEvents} from './event-priority.js';
 import {isDeepStrictEqual} from 'node:util';
 import {assertRulesChangeAllowed} from './event-setup/rules.js';
 import {profileNamesSelect,identityView} from './profile/identity.js';
@@ -51,7 +52,7 @@ export function composeServices({database:db,Prisma,files,config}) {
  const publicCount={registrationEventRows:{where:{status:'CONFIRMED'}}};
  const withParticipantCount=({ _count,...event })=>({...event,_count:{categories:_count.categories},participantCount:_count.registrationEventRows});
  const events={
-  async publicList(upcoming=false){const rows=await db.event.findMany({where:{status:'PUBLISHED',...(upcoming?{startsAt:{gt:new Date()}}:{})},select:{id:true,title:true,description:true,publicSlug:true,startsAt:true,timeZone:true,venue:true,primaryImageFileId:true,mode:true,publicOrganizerName:true,externalUrl:true,discipline:{select:{name:true}},categories:{where:{active:true},select:{priceCents:true,currency:true}},registrationConfigEventRows:{select:{amountCents:true,currency:true}},team:{select:teamSummary},_count:{select:{categories:true,...publicCount}}},orderBy:{startsAt:'asc'},take:100});return rows.map(withParticipantCount);},
+  async publicList(upcoming=false){const rows=await db.event.findMany({where:{status:'PUBLISHED',...(upcoming?{startsAt:{gt:new Date()}}:{})},select:{organizerId:true,organizer:{select:{preferredEventId:true}},id:true,title:true,description:true,publicSlug:true,startsAt:true,timeZone:true,venue:true,primaryImageFileId:true,mode:true,publicOrganizerName:true,externalUrl:true,discipline:{select:{name:true}},categories:{where:{active:true},select:{priceCents:true,currency:true}},registrationConfigEventRows:{select:{amountCents:true,currency:true}},team:{select:teamSummary},_count:{select:{categories:true,...publicCount}}},orderBy:[{startsAt:'asc'},{createdAt:'asc'},{id:'asc'}],take:100});return prioritizeOrganizerEvents(rows).map(({organizerId,organizer,...event})=>withParticipantCount(event));},
   async detail(slug){const e=await eventsFor(db).getPublic(slug);const setup=await db.event.findUnique({where:{id:e.id},select:{discipline:{select:{name:true}},categories:{where:{active:true},orderBy:{createdAt:'asc'},select:{id:true,name:true,description:true,gender:true,minAge:true,maxAge:true,modality:true,modalities:true,priceCents:true,currency:true,capacity:true}},_count:{select:{categories:true,...publicCount}},registrationConfigEventRows:{select:{amountCents:true,currency:true}}}});return withEventOrganizer(db,{...e,...withParticipantCount(setup),team:e.teamId?await db.team.findUnique({where:{id:e.teamId},select:teamSummary}):null});},
   async list(actor){
    organizer(actor);
@@ -120,6 +121,7 @@ export function composeServices({database:db,Prisma,files,config}) {
    if(event.source!=='EXTERNAL')await requireEventManager(tx.database,actor,event);
    if(event.mode!=='INFORMATIONAL' && !(event.source==='EXTERNAL' && event.reviewStatus==='APPROVED'))throw new AppError('Acción disponible para eventos informativos o externos aprobados',409,'INVALID_STATE');
    if(!['DRAFT','PUBLISHED'].includes(event.status))throw new AppError('Evento cerrado',409,'IMMUTABLE_STATE');
+   await tx.database.user.updateMany({where:{preferredEventId:id},data:{preferredEventId:null}});
    return tx.database.event.update({where:{id},data:{status:'DRAFT'}});
   });},
   async enroll(actor,id,input){

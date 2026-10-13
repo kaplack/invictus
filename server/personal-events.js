@@ -14,7 +14,24 @@ export function createPersonalEvents({db,commerce,eventsFor,registrationsFor}) {
       throw new AppError('Solo puedes editar borradores o eventos devueltos con observaciones',409,'REVIEW_LOCKED');
   };
   return {
-    async list(actor) {const rows=await db.event.findMany({where:{AND:[managedEventWhere(actor),{mode:'MANAGED'}]},include:{team:{select:teamSummary},_count:{select:{registrationEventRows:true}}},orderBy:{createdAt:'desc'}});return Promise.all(rows.map(async event=>({...await withEventOrganizer(db,event),...(!event.teamId?{lifecycle:personalLifecycle(event,event._count.registrationEventRows)}:{})})));},
+    async list(actor) {const rows=await db.event.findMany({where:{AND:[managedEventWhere(actor),{mode:'MANAGED'}]},include:{team:{select:teamSummary},_count:{select:{registrationEventRows:true}}},orderBy:{createdAt:'desc'}});const preference=await db.user.findUnique({where:{id:actor.id},select:{preferredEventId:true}});const upcoming=rows.filter(e=>e.organizerId===actor.id&&e.status==='PUBLISHED'&&e.startsAt>new Date());return Promise.all(rows.map(event=>({isPrioritized:preference?.preferredEventId===event.id,canPrioritize:event.organizerId===actor.id&&upcoming.length>1&&upcoming.some(e=>e.id===event.id),...event})).map(async event=>({...await withEventOrganizer(db,event),...(!event.teamId?{lifecycle:personalLifecycle(event,event._count.registrationEventRows)}:{})})));},
+    async priority(actor,id,input) {
+      const {enabled}=z.object({enabled:z.boolean()}).strict().parse(input);
+      z.string().uuid().parse(id);
+      return commerce.run(null,async tx=>{
+        const database=tx.database;
+        await database.$queryRaw`SELECT id FROM users WHERE id = ${actor.id}::uuid FOR UPDATE`;
+        const event=await database.event.findUnique({where:{id}});
+        if(!event||event.organizerId!==actor.id)throw new AppError('Solo puedes priorizar tus propios eventos',403,'FORBIDDEN');
+        if(enabled){
+          const upcoming={organizerId:actor.id,status:'PUBLISHED',startsAt:{gt:new Date()}};
+          if(event.status!=='PUBLISHED'||!event.startsAt||event.startsAt<=new Date()||await database.event.count({where:upcoming})<2)
+            throw new AppError('Necesitas al menos dos eventos publicados y próximos',409,'PRIORITY_UNAVAILABLE');
+          await database.user.update({where:{id:actor.id},data:{preferredEventId:id}});
+        }else await database.user.updateMany({where:{id:actor.id,preferredEventId:id},data:{preferredEventId:null}});
+        return {enabled};
+      });
+    },
     async get(actor,id) {
       const event=await eventsFor(db).getManaged(actor,id);
       return {...event,...(!event.teamId?{lifecycle:personalLifecycle(event,await db.eventRegistration.count({where:{eventId:id}}))}:{}),team:event.teamId?await db.team.findUnique({where:{id:event.teamId},select:teamSummary}):null,configuration:await db.eventRegistrationConfig.findUnique({where:{eventId:id}})};
@@ -88,6 +105,7 @@ export function createPersonalEvents({db,commerce,eventsFor,registrationsFor}) {
           if(!await database.eventRegistrationConfig.findUnique({where:{eventId:id}}))throw new AppError('Configura el cupo primero',409,'NOT_CONFIGURED');
           await assertEventSetupReady(database,event);
         }
+        if(!publish)await database.user.updateMany({where:{preferredEventId:id},data:{preferredEventId:null}});
         return database.event.update({where:{id},data:{status:publish?'PUBLISHED':'DRAFT',reviewStatus:publish?'APPROVED':'DRAFT',reviewNote:null}});
       });
     },

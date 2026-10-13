@@ -11,6 +11,8 @@ enum UserStatus {
   SUSPENDED
 }
 model User {
+  preferredEventId String? @map("preferred_event_id") @db.Uuid
+  preferredEvent Event? @relation("PreferredEvent", fields: [preferredEventId], references: [id], onDelete: SetNull)
   registrationAudits RegistrationAudit[]
   createdEvents Event[] @relation("EventCreator")
   teamMemberships TeamMember[]
@@ -286,6 +288,7 @@ model TeamMember {
   @@map("team_members")
 }
 model Event {
+  preferredBy User[] @relation("PreferredEvent")
   competitorSequence Int @default(0) @map("competitor_sequence")
     meetingAt DateTime? @map("meeting_at") @db.Timestamptz(6)
     meetingVenue String? @map("meeting_venue") @db.VarChar(500)

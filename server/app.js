@@ -41,6 +41,7 @@ export async function createApp({database,Prisma,config}) {
  app.use('/api/panel',createPanelAccess({resolvePermissions}).router({requireAuth:auth.requireAuth}));
  app.get('/api/events/mine',auth.requireAuth,async(req,res)=>res.json(await s.personalEvents.list(req.user)));
  app.get('/api/events/mine/:id/attendees',auth.requireAuth,async(req,res)=>res.json(await s.personalEvents.attendees(req.user,req.params.id)));
+ app.post('/api/events/mine/:id/priority',auth.requireAuth,async(req,res)=>res.json(await s.personalEvents.priority(req.user,req.params.id,req.body)));
  app.get('/api/events/mine/:id',auth.requireAuth,async(req,res)=>res.json(await s.personalEvents.get(req.user,req.params.id)));
  app.post('/api/events/mine',auth.requireAuth,async(req,res)=>res.status(201).json(await s.personalEvents.save(req.user,null,req.body)));
  app.patch('/api/events/mine/:id',auth.requireAuth,async(req,res)=>res.json(await s.personalEvents.save(req.user,req.params.id,req.body)));

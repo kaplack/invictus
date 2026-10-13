@@ -1,5 +1,6 @@
 import React from 'react';
 const paths = {
+  pin: <><path d="m16 3 5 5-4 1-4 4v4l-3-3-6 6m6-6-3-3h4l4-4 1-4Z"/></>, 
   dollar: <><path d="M12 2v20m5-15c-1-4-10-4-10 1 0 5 10 3 10 8 0 5-9 5-10 1"/></>,
   cancelled: <><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></>,
   ticket: <><path d="M3 5h18v5a2 2 0 0 0 0 4v5H3v-5a2 2 0 0 0 0-4V5Z"/><path d="M15 5v3m0 3v2m0 3v3"/></>,
