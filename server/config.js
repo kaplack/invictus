@@ -9,7 +9,9 @@ const envSchema = z.object({
  S3_BUCKET:z.string().optional(), AWS_REGION:z.string().optional()
 });
 export function readConfig(env=process.env) {
- const parsed=envSchema.safeParse(env);
+ // Render terminates public connections at its reverse proxy. Keep local
+ // connections untrusted and allow an explicit deployment override.
+ const parsed=envSchema.safeParse({...env,TRUST_PROXY:env.TRUST_PROXY??(env.RENDER==='true'?1:0)});
  if(!parsed.success) throw new Error('Configuración inválida: '+parsed.error.issues.map(i=>i.path.join('.')).join(', '));
  const c=parsed.data; c.origins=c.WEB_ORIGINS.split(',').map(s=>s.trim());
  for(const origin of c.origins) { const u=new URL(origin); if(u.origin!==origin) throw new Error('WEB_ORIGINS requiere orígenes sin rutas'); }
