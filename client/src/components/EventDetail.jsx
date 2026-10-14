@@ -1,6 +1,7 @@
 import OrganizerWhatsApp from './OrganizerWhatsApp.jsx';
 import {whatsappDestination} from '../helpers/whatsapp.js';
 import {eventOrganizerName} from '../helpers/event-organizer.js';
+import {downloadEventShareImage} from '../helpers/event-share-image.js';
 import {EventRulesLink} from './EventRules.jsx';
 import React,{useState,useEffect} from 'react';
 import {api,fileUrl} from '../services/api.js';
@@ -9,6 +10,7 @@ import {Feedback} from './UI.jsx';
 import {OutlineIcon} from './OutlineIcon.jsx';
 import {IconAction} from './IconAction.jsx';
 import {Modal} from './Modal.jsx';
+import {EventRoutePreview} from './EventRoutePreview.jsx';
 import {eventPrice,eventDate} from './EventCards.jsx';
 import {categoryPrice} from './EventSetup.jsx';
 import {CategoryEnrollment} from './CategoryRegistration.jsx';
@@ -19,6 +21,7 @@ import '../styles/route-images.css';
 
 export function EventDetail({event,user}) {
  const [categoryId,setCategory]=useState(''),[enrolling,setEnrolling]=useState(false),[sharing,setSharing]=useState(false);
+ const [previewRoute,setPreviewRoute]=useState(null);
  const action=useAction(),shareAction=useAction();
  const [registration,setRegistration]=useState(null),[checking,setChecking]=useState(!!user),[registrationError,setRegistrationError]=useState(''),[revision,setRevision]=useState(0);
  useEffect(()=>{let active=true;setRegistration(null);setRegistrationError('');setChecking(!!user);if(user)api('/events/'+event.id+'/my-registration').then(r=>{if(active)setRegistration(r);}).catch(e=>{if(active)setRegistrationError(e.message);}).finally(()=>{if(active)setChecking(false);});return()=>{active=false;};},[event.id,user?.id,revision]);
@@ -27,7 +30,12 @@ export function EventDetail({event,user}) {
  const informational=event.mode==='INFORMATIONAL',past=!event.startsAt||new Date(event.startsAt)<=new Date();
  const price=selected?{label:'Inscripción',value:categoryPrice(selected)}:eventPrice(event);
  const organizer=eventOrganizerName(event);
- const shareUrl=typeof location==='undefined'?event.publicUrl:location.origin+'/eventos/'+event.publicSlug;
+ const shareUrl=event.publicUrl||(typeof location==='undefined'?'':location.origin+'/eventos/'+event.publicSlug);
+ async function downloadShareImage(){
+  const style=getComputedStyle(document.querySelector('.event-detail'));
+  const color=name=>style.getPropertyValue('--landing-'+name).trim();
+  await downloadEventShareImage({event,organizer,date:eventDate(event),colors:{background:color('bg'),gold:color('gold'),text:color('text'),muted:color('muted')}});
+ }
  const time=value=>value?new Intl.DateTimeFormat('es-PE',{hour:'numeric',minute:'2-digit',timeZone:event.timeZone||'America/Lima'}).format(new Date(value)):null;
  const startTime=time(event.startsAt);
  function register(){
@@ -61,7 +69,7 @@ export function EventDetail({event,user}) {
    <section className="event-detail-panel"><h2>Sobre el evento</h2><p className="preline">{event.description}</p>{informational&&<p>Evento informativo. Consulta los detalles con el organizador.</p>}</section>
    {!informational&&categories.length>0&&<section className="event-detail-panel"><h2>{event.competitionConfig?'Distancias':'Categorías'}</h2><p className="muted">Elige una categoría. La inscripción está sujeta a revisión del organizador.</p><fieldset className="event-detail-categories"><legend className="sr-only">Categoría para inscribirte</legend>{categories.map(c=><label key={c.id} className="event-detail-category"><input type="radio" name="event-category" value={c.id} checked={categoryId===c.id} disabled={past} onChange={()=>setCategory(c.id)}/><span><strong>{c.name}</strong>{c.description&&<small>{c.description}</small>}{c.capacity&&<small>Cupo: {c.capacity}</small>}</span><b>{categoryPrice(c)}</b></label>)}</fieldset></section>}
    {event.kitEnabled&&event.kitDateFrom&&event.kitDateTo&&<section className="event-detail-panel"><h2><OutlineIcon name="bag"/>Entrega de kits</h2><p>{eventDate({...event,startsAt:event.kitDateFrom,timeZone:'UTC'})}{event.kitDateFrom!==event.kitDateTo?' — '+eventDate({...event,startsAt:event.kitDateTo,timeZone:'UTC'}):''}</p><p>Horario diario: {event.kitTimeFrom} — {event.kitTimeTo}</p><p>{[event.kitVenue,event.kitAddress].filter(Boolean).join(' · ')}</p>{event.kitInstructions&&<p className="preline">{event.kitInstructions}</p>}</section>}
-   {routes.length>0&&<section className="event-detail-panel"><h2><OutlineIcon name="globe"/>Rutas del evento</h2><div className="event-route-gallery">{routes.map((route,index)=><figure key={index}><a href={fileUrl(route.fileId)} target="_blank" rel="noopener noreferrer" aria-label={'Ampliar '+route.title}><img className="event-detail-route" src={fileUrl(route.fileId)} loading="lazy" alt={route.title}/></a><figcaption><h3>{route.title}</h3>{route.description&&<p>{route.description}</p>}</figcaption></figure>)}</div></section>}
+   {routes.length>0&&<section className="event-detail-panel"><h2><OutlineIcon name="globe"/>Rutas del evento</h2><div className="event-route-gallery">{routes.map((route,index)=><figure key={index}><button type="button" className="event-route-open" onClick={()=>setPreviewRoute(route)} aria-label={'Ampliar '+route.title}><img className="event-detail-route" src={fileUrl(route.fileId)} loading="lazy" alt={route.title}/></button><figcaption><h3>{route.title}</h3>{route.description&&<p>{route.description}</p>}</figcaption></figure>)}</div></section>}
    {Array.isArray(event.galleryFileIds)&&event.galleryFileIds.length>0&&<section className="event-detail-panel"><h2><OutlineIcon name="camera"/>Galería</h2><div className="event-detail-gallery">{event.galleryFileIds.map(id=><a key={id} href={fileUrl(id)} target="_blank" rel="noopener noreferrer" aria-label="Ampliar imagen del evento"><img loading="lazy" src={fileUrl(id)} alt="Imagen del evento"/></a>)}</div></section>}
    {organizer&&<section className="event-detail-panel"><h2><OutlineIcon name="users"/>Organizador</h2><p>{organizer}</p>{informational&&event.publicOrganizerPhone&&<p>Teléfono: <a href={'tel:'+event.publicOrganizerPhone.replace(/[^+\d]/g,'')}>{event.publicOrganizerPhone}</a></p>}{informational&&event.publicOrganizerEmail&&<p>Correo electrónico: <a href={'mailto:'+event.publicOrganizerEmail}>{event.publicOrganizerEmail}</a></p>}</section>}
   </div>
@@ -72,11 +80,12 @@ export function EventDetail({event,user}) {
    <div className="event-share-actions" role="group" aria-label="Opciones para compartir">
     <IconAction label="Copiar enlace" icon="copy" disabled={shareAction.busy} onClick={()=>shareAction.run(()=>navigator.clipboard.writeText(shareUrl),'Enlace copiado.')}/>
     <span className="event-share-whatsapp"><IconAction label="Compartir por WhatsApp" icon="whatsapp" href={'https://wa.me/?text='+encodeURIComponent(event.title+' '+shareUrl)} target="_blank" rel="noopener noreferrer"/></span>
-    {event.qrDataUrl&&<IconAction label="Descargar QR" icon="download" href={event.qrDataUrl} download={event.publicSlug+'-qr.png'}/>}
+    {event.qrDataUrl&&<IconAction label="Descargar imagen del evento" icon="download" disabled={shareAction.busy} onClick={()=>shareAction.run(downloadShareImage,'Imagen del evento descargada.')}/>}
    </div>
-   {event.qrDataUrl&&<figure className="event-share-qr"><img src={event.qrDataUrl} alt="QR del enlace público del evento"/><figcaption>Escanea para ver el evento</figcaption></figure>}
+   {event.qrDataUrl&&<figure className="event-share-qr event-share-card"><h3>{event.title}</h3><p>{organizer?'Organizado por '+organizer:'Organizador por confirmar'}</p><p className="event-share-card-date">{eventDate(event)}</p><img src={event.qrDataUrl} alt="QR del enlace público del evento"/><figcaption>Escanea para ver el evento</figcaption><p className="event-share-card-brand">Powered by invictus.com.pe</p></figure>}
    <Feedback state={shareAction}/>
   </div></Modal>}
   {enrolling&&(user?<CategoryEnrollment event={event} initialCategoryId={categoryId} close={()=>{setEnrolling(false);setRevision(v=>v+1);}}/>:<GuestEnrollment event={event} initialCategoryId={categoryId} close={()=>setEnrolling(false)}/>)}
+  {previewRoute&&<EventRoutePreview route={previewRoute} onClose={()=>setPreviewRoute(null)}/>}
  </article>;
 }
