@@ -7,6 +7,7 @@ export function createEventSetupRouter({ service, requireAuth }) {
   router.use(['/events/:id/setup', '/events/:id/categories', '/events/:id/payment-methods', '/teams/:id/payment-methods'], requireAuth);
   router.get('/events/:id/setup', async (req, res) => res.json(await service.get(req.user, req.params.id)));
   router.post('/events/:id/categories', async (req, res) => res.status(201).json(await service.category(req.user, req.params.id, null, req.body)));
+  router.patch('/events/:id/categories/:categoryId/price', async (req, res) => res.json(await service.updatePublishedPrice(req.user, req.params.id, req.params.categoryId, req.body)));
   router.put('/events/:id/categories/:categoryId', async (req, res) => res.json(await service.category(req.user, req.params.id, req.params.categoryId, req.body)));
   router.post('/events/:id/payment-methods', async (req,res)=>res.status(201).json(await service.personalMethod(req.user,req.params.id,null,req.body)));
   router.put('/events/:id/payment-methods/:methodId', async (req,res)=>res.json(await service.personalMethod(req.user,req.params.id,req.params.methodId,req.body)));
