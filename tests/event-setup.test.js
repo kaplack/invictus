@@ -60,6 +60,14 @@ test('configuración: permisos, aislamiento, QR privado, moneda y publicación c
   await send(moderator.agent, 'post', `/events/manage/${event.id}/review`, { decision: 'APPROVE' }).expect(200);
   const publicEvent = (await request(app).get(`/api/events/public/${event.publicSlug}`).expect(200)).body;
   assert.equal(publicEvent.categories[0].priceCents, 5000); assert.equal(publicEvent.categories.length, 1);
+  const pricePath = `/events/${event.id}/categories/${saved.id}/price`;
+  await send(outsider.agent, 'patch', pricePath, { priceCents: 6500 }).expect(404);
+  await send(admin.agent, 'patch', pricePath, { priceCents: 6500, name: 'Changed' }).expect(400);
+  await send(admin.agent, 'patch', pricePath, { priceCents: -1 }).expect(400);
+  await send(admin.agent, 'patch', pricePath, { priceCents: 6500 }).expect(200);
+  const updatedPublic = (await request(app).get(`/api/events/public/${event.publicSlug}`).expect(200)).body;
+  assert.equal(updatedPublic.categories[0].priceCents, 6500);
+  await send(admin.agent, 'put', `/events/${event.id}/categories/${saved.id}`, category).expect(409);
   assert.equal(publicEvent.enabledPaymentMethods, undefined);
   await send(outsider.agent, 'post', `/events/${event.id}/register`).expect(400);
   assert.equal(await db.eventRegistration.count({ where: { eventId: event.id } }), 0);
