@@ -80,6 +80,29 @@ export function createEventSetupService({ database: db, files }) {
         methodIds: selected.map(m => m.methodId), methods: canManage ? available : selected.map(m => m.method),
         hasRegistrations: registrations>0, editable: event.mode!=='INFORMATIONAL' && canManage && setupEditable(event) && registrations === 0 };
     },
+    async updatePublishedPrice(actor, eventId, categoryId, raw) {
+      idInput.parse(categoryId);
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
+          Object.keys(raw).length !== 1 || !Number.isSafeInteger(raw.priceCents) ||
+          raw.priceCents < 0 || raw.priceCents > 2000000000)
+        throw new AppError('Precio inválido', 400, 'INVALID_PRICE');
+      return runCoordinated(db, async tx => {
+        const event = await lockManagedEvent(tx, actor, eventId);
+        if (event.status !== 'PUBLISHED' || event.mode === 'INFORMATIONAL')
+          throw conflict('Solo se permite editar precios de eventos publicados con inscripciones');
+        if (await tx.eventRegistration.count({ where: { eventId } }))
+          throw conflict('No se puede cambiar el precio después de la primera inscripción');
+        const category = await tx.eventCategory.findFirst({ where: { id: categoryId, eventId } });
+        if (!category) throw new AppError('Categoría no disponible', 404, 'CATEGORY_NOT_FOUND');
+        if (raw.priceCents > 0) {
+          const method = await tx.eventPaymentMethod.findFirst({
+            where: { eventId, method: { active: true, currency: category.currency } }
+          });
+          if (!method) throw conflict('Habilita un método de pago antes de establecer un precio');
+        }
+        return tx.eventCategory.update({ where: { id: categoryId }, data: { priceCents: raw.priceCents } });
+      });
+    },
     async category(actor, eventId, categoryId, raw) {
       const data = parse(categoryInput, raw);
       if (categoryId) idInput.parse(categoryId);
