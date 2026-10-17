@@ -25,6 +25,7 @@ export async function createApp({database,Prisma,config}) {
  const app=express();app.disable('x-powered-by');app.set('trust proxy',config.TRUST_PROXY);
  app.use(cors({origin:(origin,done)=>done(null,!origin||config.origins.includes(origin)),credentials:true}));
  app.use('/api',(req,res,next)=>{res.set({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});if(!['GET','HEAD','OPTIONS'].includes(req.method)){if(!config.origins.includes(req.get('origin')))return next(new AppError('Origen no permitido',403,'INVALID_ORIGIN'));if(!(req.method==='POST'&&req.path==='/files')&&!isGuestProof(req)&&!req.is('application/json'))return next(new AppError('Formato no admitido',415,'JSON_REQUIRED'));}next();});
+ app.get('/api/ping',(req,res)=>res.json({status:'ok'}));
  app.use((req,res,next)=>(req.method==='POST'&&req.path==='/api/files')||isGuestProof(req)?next():express.json({limit:'64kb'})(req,res,next));app.use(cookieParser());
  const authService=profileAwareAuth(createAuthService({database}),database);const cookieOptions=sessionCookieOptions({secure:config.NODE_ENV==='production'});
  const authOptions={authService,cookieName:config.NODE_ENV==='production'?'__Host-invictus_session':'invictus_session',cookieOptions};const auth=createAuthMiddleware(authOptions);
