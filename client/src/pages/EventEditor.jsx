@@ -60,7 +60,9 @@ export default function EventEditor({id}){
     const result=await api('/events/'+event.id+'/categories/'+c.id+'/price','PATCH',{priceCents:Math.round(price*100)});
     setCategories(rows=>rows.map(row=>row.id===c.id?{...row,priceCents:result.priceCents}:row));
    }
-   setDirty(false);dirtyRef.current=false;return event;
+   // Published Team events only support the dedicated price operation.
+   // Personal events retain their existing information save below.
+   if(event.teamId){setDirty(false);dirtyRef.current=false;return event;}
   }
   if(!values.title.trim())throw Error('Escribe el nombre para guardar el borrador.');
   if(editable&&(configError||modalitiesError))throw Error(configError||modalitiesError);
