@@ -1,6 +1,6 @@
 # Sesiones en iPhone y proxy de API
 
-La web pública y el administrador usan `/api` en su propio origen. Las reglas en `vercel.json` y `admin/vercel.json` reenvían esas solicitudes a `https://invictus-api-rdqu.onrender.com/api`, antes de la regla de navegación a `index.html`.
+La web pública y el administrador usan `/api` en su propio origen. Las reglas en `vercel.json` y `admin/vercel.json` reenvían esas solicitudes a `https://api.invictus.com.pe/api`, antes de la regla de navegación a `index.html`.
 
 En ambos proyectos de Vercel, establecer `VITE_API_URL=/api` para Production (y Preview si se utiliza). Una variable existente que apunte directamente a Render evita el proxy; cambiarla y volver a compilar/desplegar ambos proyectos. Conservar las demás variables.
 

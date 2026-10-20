@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://invictus-api-rdqu.onrender.com/api/:path*" },
+    { "source": "/api/:path*", "destination": "https://api.invictus.com.pe/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

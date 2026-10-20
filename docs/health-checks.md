@@ -5,4 +5,4 @@
 
 Ambas respuestas llevan `Cache-Control: no-store`. El ping solo responde después de que el servidor haya arrancado: el proceso sigue conectándose a la base de datos durante su inicio.
 
-Después de desplegar, configurar cron-job.org con método GET y URL `https://invictus-api-rdqu.onrender.com/api/ping`, conservando el horario acordado. Este cambio separa las comprobaciones; no garantiza resolver los errores de enrutamiento `502` con `x-render-routing: no-deploy` observados durante el despertar en Render.
+Después de desplegar, configurar cron-job.org con método GET y URL `https://api.invictus.com.pe/api/ping`, conservando el horario acordado. Este cambio separa las comprobaciones; no garantiza resolver los errores de enrutamiento `502` con `x-render-routing: no-deploy` observados durante el despertar en Render.
